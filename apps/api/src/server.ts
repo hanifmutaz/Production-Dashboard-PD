@@ -36,6 +36,7 @@ async function main(): Promise<void> {
     executiveCacheSec: env.EXECUTIVE_CACHE_SEC,
     trustProxy: env.TRUST_PROXY,
     logger,
+    ...(env.WEB_DIST_DIR ? { webDistDir: env.WEB_DIST_DIR } : {}),
   });
   const server = app.listen(env.PORT, () => logger.info({ port: env.PORT }, 'Dashboard V3 API berjalan'));
   const shutdown = (): void => {

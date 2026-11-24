@@ -1,3 +1,11 @@
+# FINAL REPORT — sesi 3 (2026-11-25)
+
+## Ringkas sesi 3
+Tahap E dimulai: aset mockup diekstrak verbatim, `apps/web` dibuat, **Login + Shell + Executive (edit target & Kalender Kerja) selesai** dan terbukti identik secara style dengan mockup (0 perbedaan di 6 kombinasi tema × lebar). `verify` EXIT 0 dengan 128 tes; typecheck web belum bisa (BLK-008). Halaman lain belum di-port.
+
+---
+(Laporan sesi 2 di bawah tetap berlaku untuk backend.)
+
 # FINAL REPORT — sesi 2 (2026-11-25)
 
 ## Change completed
@@ -17,7 +25,7 @@
 | G0 | PASS | |
 | G1 | PARTIAL | FR-016 frontend belum |
 | G2 | PARTIAL | MOCKUP_INVENTORY parsial; api-samples belum |
-| G3 | PARTIAL | backend selesai; frontend belum |
+| G3 | PARTIAL | backend selesai; frontend 3 dari ±10 layar |
 | G4 | PARTIAL | 123 tes di pg-mem; belum Postgres asli |
 | G5 | PARTIAL | `npm audit` diblokir; monitoring/backup belum |
 | G6 | FAIL | deploy/rollback doc belum; migrasi belum di Postgres asli |

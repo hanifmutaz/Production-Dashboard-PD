@@ -119,7 +119,7 @@ describe('OQ-004/005/007: agregasi harian', () => {
     h.addReports([{ ...complete, oee: -101 }]);
     const res = await supervisor.get('/api/v3/reporting/reports?start=2026-11-24&end=2026-11-24');
     expect(res.body.data[0]).toMatchObject({ oee: -101, anomaly: true });
-    expect(res.body.meta.units.stoptime).toBe('menit');
+    expect(res.body.meta.units).toEqual({ stoptime: 'menit', sogo: 'menit', shugyo: 'menit', kikai: 'menit' });
   });
 });
 

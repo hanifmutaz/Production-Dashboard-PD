@@ -14,7 +14,13 @@ apps/api          Express: routes → service → repository
   modules/export       ekspor server-side + template
   modules/audit        audit log
   modules/sync         penerima PUSH subcont (off default)
-apps/web          (BELUM DIBANGUN — Tahap E)
+apps/web          React 19 + Vite 8 (tanpa UI kit). CSS mockup diekstrak verbatim.
+  src/styles/mockup.css               13 blok <style> global mockup, urutan asli
+  src/styles/monitoring-template.css  2 blok <style> dari <template id="monitoring-template"> (khusus Monitoring)
+  src/iconData.ts                     objek IC mockup (45 ikon) + ic() → <Icon/>
+  src/lib/*                           api, auth, router hash, tema, format, achievement
+  src/shell/Shell.tsx                 sidebar/rail/drawer/header/tema/layar penuh/profil
+  src/pages/*                         satu file per halaman mockup
 ```
 
 ## ADR ringkas
@@ -28,3 +34,6 @@ apps/web          (BELUM DIBANGUN — Tahap E)
 - **ADR-009 Guard kolom runtime:** kolom mapping yang belum ada di view dibaca `NULL` + warning saat start.
 - **ADR-010 Settings yang memengaruhi logika (baru):** hanya kunci `line_status` dan `line_discovery` yang divalidasi ketat (zod `.strict()`); nilai tersimpan yang rusak → pakai default (tidak crash). Dibaca per request (tabel kecil). Kunci lain disimpan bebas untuk UI.
 - **ADR-011 Status line tunggal (baru):** `ReportingService#liveStatus` dipakai detail line & ringkasan, agar status tidak saling bertentangan. Perbedaan hanya lewat setting `staleInSummary`.
+- **ADR-002 Router/state frontend (baru):** router **hash** buatan sendiri (`lib/router.ts`), bukan React Router. Alasan: mockup memakai hash (`#executive`, `#line-41hr121`) sehingga URL & bookmark identik; React Router juga tidak tersedia offline. State lokal per halaman (`useState`), sesi dari `AuthProvider` (`/api/v3/auth/me`). URL lama `?view=` diarahkan ke hash baru.
+- **ADR-012 CSS mockup tanpa transformasi (baru):** Vite memakai transformer PostCSS dan `cssMinify:false`. Lightningcss mengubah `light-dark()` mockup dan menghilangkan border/tema (terbukti saat uji paritas). CSS di dalam `<template>` mockup dipisah karena di mockup hanya berlaku di shadow DOM komponen Monitoring.
+- **ADR-013 Server dev tanpa Postgres (baru):** `npm run dev:mem` = API + web build + pg-mem + fixture sintetis. Hanya dev; ditolak di production.

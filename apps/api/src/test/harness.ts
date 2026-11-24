@@ -1,9 +1,7 @@
 // Harness integrasi: pg-mem (Postgres in-memory) untuk DB dashboard & fixture ConMas.
 // Catatan jujur: pg-mem ≠ Postgres asli. Lulus di sini belum membuktikan perilaku di Postgres produksi.
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { DataType, newDb, type IMemoryDb } from 'pg-mem';
+import type { IMemoryDb } from 'pg-mem';
 import pino from 'pino';
 import { DEFAULT_SHIFT_CONFIG } from '@v3/shared';
 import { createApp } from '../app.js';
@@ -12,50 +10,9 @@ import { createConmasReader } from '../db/conmas.js';
 import type { DbPool } from '../db/pool.js';
 import { AuthService } from '../modules/auth/authService.js';
 import { buildRow, fixtureColumns, fixtureDdl, insertSql, type ReportSpec } from '../devtools/devFixture.js';
+import { inlineParams, newConmasMemDb, newDashboardMemDb, REPO_ROOT as root } from '../devtools/memDb.js';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
-
-function registerPgCompat(db: IMemoryDb): void {
-  db.public.registerOperator({
-    operator: '~',
-    left: DataType.text,
-    right: DataType.text,
-    returns: DataType.bool,
-    implementation: (a: string, b: string) => new RegExp(b).test(a),
-  });
-  db.public.registerFunction({
-    name: 'trim',
-    args: [DataType.text],
-    returns: DataType.text,
-    implementation: (s: string | null) => (s === null ? null : s.trim()),
-  });
-  db.public.registerFunction({
-    name: 'nullif',
-    args: [DataType.text, DataType.text],
-    returns: DataType.text,
-    implementation: (a: string | null, b: string | null) => (a === b ? null : a),
-  });
-  db.public.registerFunction({
-    name: 'date',
-    args: [DataType.timestamp],
-    returns: DataType.date,
-    implementation: (t: Date | null) => (t === null ? null : new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()))),
-  });
-  db.public.registerFunction({
-    name: 'to_char',
-    args: [DataType.date, DataType.text],
-    returns: DataType.text,
-    implementation: (d: Date | null) => (d === null ? null : d.toISOString().slice(0, 10)),
-  });
-}
-
-export function migrationStatements(): string[] {
-  const sql = readFileSync(path.join(root, 'apps/api/migrations/1732400000000_init.sql'), 'utf8').split('-- Down Migration')[0] ?? '';
-  return sql
-    .split(/;\s*\n/)
-    .map((s) => s.trim())
-    .filter((s) => s && !s.split('\n').every((l) => l.trim().startsWith('--')));
-}
+export { migrationStatements } from '../devtools/memDb.js';
 
 export interface Harness {
   readonly app: ReturnType<typeof createApp>;
@@ -71,17 +28,14 @@ export interface Harness {
 export const DEFAULT_NOW = Date.UTC(2026, 10, 24, 3, 0); // 2026-11-24 10:00 WIB (Selasa)
 
 export async function createHarness(opts: { now?: number; subcontEnabled?: boolean; dropColumns?: string[] } = {}): Promise<Harness> {
-  const dashboardDb = newDb();
-  registerPgCompat(dashboardDb);
-  for (const s of migrationStatements()) dashboardDb.public.none(s);
+  const dashboardDb = newDashboardMemDb();
   dashboardDb.public.none(
     `INSERT INTO lines (line_code, shift_scheme, location) VALUES ('L01', 2, 'internal'), ('L02', 2, 'internal'), ('L03', 3, 'internal'), ('S01', 2, 'sgp')`,
   );
 
   const rc0 = loadReportColumns(path.join(root, 'config/reportColumns.example.js'));
   const rc: ReportColumns = { ...rc0, VIEW: 'view_report_dev' };
-  const conmasDb = newDb();
-  registerPgCompat(conmasDb);
+  const conmasDb = newConmasMemDb();
   const dropped = new Set(opts.dropColumns ?? []);
   const ddl = fixtureDdl(rc, 'fixture_report_dev');
   conmasDb.public.none(
@@ -142,11 +96,7 @@ export async function createHarness(opts: { now?: number; subcontEnabled?: boole
       for (const spec of specs) {
         const row = Object.fromEntries(Object.entries(buildRow(rc, spec)).filter(([k]) => !dropped.has(k)));
         const { sql, params } = insertSql('fixture_report_dev', row);
-        // pg-mem: parameter lewat adapter; di sini pakai literal yang di-escape (hanya data fixture).
-        const literal = sql.replace(/\$(\d+)/g, (_, i: string) => {
-          const v = params[Number(i) - 1];
-          return v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`;
-        });
+        const literal = inlineParams(sql, params);
         conmasDb.public.none(literal);
       }
     },

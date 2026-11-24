@@ -38,6 +38,10 @@ export interface LocationAchievement {
   readonly achievement: Achievement | null;
   /** OQ-014: s/d kemarin (hari lengkap) + progres hari ini dipisah. */
   readonly split: SplitAchievement | null;
+  /** Actual bulanan (ada walau target belum diisi); null bila lokasi On Hold. */
+  readonly actual: number | null;
+  /** Actual harian terakhir yang punya data di bulan ini (kolom "Actual Harian" mockup). */
+  readonly daily: { readonly date: string; readonly actual: number } | null;
 }
 
 export class ExecutiveService {
@@ -103,6 +107,18 @@ export class ExecutiveService {
       const ewd = elapsedWorkingDays(year, month, cal.holidays, today);
       let achievement: Achievement | null = null;
       let split: SplitAchievement | null = null;
+      let daily: { date: string; actual: number } | null = null;
+      const monthActual = status === 'ok' ? await this.monthlyActual(year, month) : null;
+      if (status === 'ok') {
+        const todayIso = formatIsoDate(today);
+        const start = `${year}-${pad2(month)}-01`;
+        const monthEnd = `${year}-${pad2(month)}-${pad2(daysInMonth(year, month))}`;
+        const end = monthEnd < todayIso ? monthEnd : todayIso;
+        if (start <= end) {
+          const last = (await this.reporting.rangeTrend(start, end, { location: 'internal' })).days.filter((d) => d.hasData).at(-1);
+          if (last) daily = { date: last.date, actual: last.actual };
+        }
+      }
       if (status === 'ok' && target) {
         const actual = await this.monthlyActual(year, month);
         achievement = computeAchievement({ target: target.target, actual, workingDays: wd, elapsedWorkingDays: ewd });
@@ -129,6 +145,8 @@ export class ExecutiveService {
         calendarVersion: cal.version,
         achievement,
         split,
+        actual: monthActual,
+        daily,
       });
     }
     const available = locations.flatMap((l) => (l.achievement ? [l.achievement] : []));

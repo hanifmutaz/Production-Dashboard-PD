@@ -76,7 +76,7 @@ export interface SummaryTotals {
   readonly oee: number | null;
   /** Jumlah report dengan OEE di luar 0–100 (dikeluarkan dari OEE). */
   readonly oee_anomaly_count: number;
-  /** SUM kolom TOTAL (OQ-007). Satuan belum dikonfirmasi. */
+  /** SUM kolom TOTAL (OQ-007), satuan MENIT. */
   readonly sogo: number;
   readonly shugyo: number;
   readonly kikai: number;

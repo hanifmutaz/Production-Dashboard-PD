@@ -48,6 +48,7 @@ const envSchema = z
     LINE_START_GRACE_MIN: minutes.optional(),
     HOURLY_SLOT_OFFSET: z.coerce.number().int().min(-12).max(12).default(0),
     EXECUTIVE_CACHE_SEC: z.coerce.number().int().min(0).default(30),
+    WEB_DIST_DIR: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.SUBCONT_ENABLED && (!env.SYNC_KEY_SGP || !env.SYNC_KEY_SYSTECH)) {

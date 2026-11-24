@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -42,6 +44,8 @@ export interface AppDeps {
   readonly trustProxy: number;
   readonly logger?: Logger;
   readonly clock?: Clock;
+  /** Folder hasil build web (apps/web/dist). Bila ada, disajikan dari server yang sama. */
+  readonly webDistDir?: string;
 }
 
 const REQUEST_ID_RE = /^[A-Za-z0-9-]{8,64}$/;
@@ -115,6 +119,15 @@ export function createApp(deps: AppDeps): Express {
   app.use('/api/v3/settings', settingsRoutes(deps.dashboard, settingsService));
   app.use('/api/v3/access', accessRoutes(deps.dashboard, { pairingTtlMin: deps.pairingTtlMin }));
   app.use('/api/v3/export', exportRoutes(reporting, deps.dashboard, { subcontEnabled: deps.subcontEnabled }));
+
+  // Web SPA (hash router): file statis + index.html untuk path non-API.
+  const webDir = deps.webDistDir;
+  if (webDir && existsSync(path.join(webDir, 'index.html'))) {
+    app.use(express.static(webDir, { index: 'index.html', maxAge: '1h' }));
+    app.get(/^\/(?!api\/|healthz|readyz).*/, (_req, res) => {
+      res.sendFile(path.join(webDir, 'index.html'));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

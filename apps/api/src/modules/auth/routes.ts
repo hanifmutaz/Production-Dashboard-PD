@@ -58,7 +58,8 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
             .string()
             .trim()
             .toUpperCase()
-            .regex(/^[A-Z2-9]{8}$/),
+            .transform((v) => v.replace(/-/g, ''))
+            .pipe(z.string().regex(/^[A-Z2-9]{8}$/, 'format kode XXXX-XXXX')),
           name: z.string().trim().min(1).max(80),
         }),
         req.body,

@@ -1,6 +1,6 @@
 # OPEN QUESTIONS — keputusan (2026-11-25, dijawab Hanif Mutaz)
 
-Status: **18 item diputuskan, 1 sisa pertanyaan kecil** (satuan Sogo/Shugyo/Kikai). Bukti data dari query user ke `public.view_report_25415` (4.050 report).
+Status: **semua item diputuskan** (OQ-007b ditutup 2026-11-25: satuan menit). Bukti data dari query user ke `public.view_report_25415` (4.050 report).
 
 | ID | Keputusan | Bukti / alasan | Implementasi | Tes |
 |---|---|---|---|---|
@@ -11,7 +11,7 @@ Status: **18 item diputuskan, 1 sisa pertanyaan kecil** (satuan Sogo/Shugyo/Kika
 | OQ-005 | Skala **0–100**. Nilai di luar 0–100 = anomali: dikeluarkan dari OEE gabungan, dihitung `oee_anomaly_count`, ditandai `anomaly:true` di `/reports`. **Tidak di-clamp** | Data asli: OEE = A×P×Q/10.000; ditemukan OEE −101, −133, −93 (Availability minus) | `isValidPercent`, `isPercentAnomaly` | `formulas.test.ts`, `decisions.test.ts` |
 | OQ-006 | Deviasi = **Plan − Actual di semua halaman** (detail line, per jam, breakdown). Positif = kurang dari target. Label UI wajib: "Kurang (Plan − Actual)" | Jawaban user | `formulas.ts#deviasi(plan, actual)` (fungsi `breakdownDeviasi` dihapus) | `formulas.test.ts`, `reporting.test.ts` |
 | OQ-007 | Sogo/Shugyo/Kikai gabungan = **SUM kolom TOTAL** (2924–2926) | Data asli: TOTAL = Σ CL 1–6 (mis. 15+40=55) | SQL + summary `sogo/shugyo/kikai` | `decisions.test.ts` |
-| OQ-007b | **TERBUKA:** satuan Sogo/Shugyo/Kikai (ada nilai 130, jadi bukan %). Menit? SOGO selalu = SHUGYO di sampel — memang begitu? | — | Angka ditampilkan tanpa satuan; `meta.pending` di `/reports` | — |
+| OQ-007b | Satuan Sogo/Shugyo/Kikai = **menit** | Jawaban user 2026-11-25 | `meta.units` di `/reports`, kontrak `SummaryTotals` | `decisions.test.ts` |
 | OQ-008 | Tidak ada double counting & tidak perlu filter `deleted` | `rep_top_id` dobel = 0 baris; `deleted` = 0 untuk 4.050/4.050 report | Tidak ada perubahan kode | — |
 | OQ-009 | Masalah 70/86 akan muncul di view yang sama setelah setting ConMas | Jawaban user | Guard kolom runtime tetap (NULL bila belum ada) | `reporting.test.ts` |
 | OQ-010 | HOLD — kolom `2928_d`/`2929_d` belum dipakai | Jawaban user | Tidak dipakai | — |

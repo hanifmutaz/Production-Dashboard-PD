@@ -1,0 +1,14 @@
+/* Tambahan V3 di atas CSS mockup — minimal & beralasan. Aturan mockup tidak diubah di sini. */
+
+/* Login asli (username/password) menggantikan pilihan role demo. Field baru memakai gaya
+   field "Device Pairing Code" yang sudah ada di mockup (#pair-form input) agar seragam. */
+#demo-login-form .fld input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--pan);
+  color: var(--tx);
+}
+#demo-login-form .fld + .fld { margin-top: 12px; }
