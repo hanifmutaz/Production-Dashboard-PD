@@ -1,3 +1,4 @@
+import { formatIsoDate, toWib } from '@v3/shared';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
@@ -8,7 +9,7 @@ import { recordAudit } from '../audit/auditService.js';
 import type { AuthService } from './authService.js';
 import { hashToken, newToken } from './tokens.js';
 
-export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure: boolean }): Router {
+export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure: boolean; clock?: () => number }): Router {
   const r = Router();
   const loginLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 20, standardHeaders: true, legacyHeaders: false });
 
@@ -40,8 +41,20 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
 
   r.get('/me', requireAuth, (req, res) => {
     const p = principalOf(req);
+    // today/now dari jam server (WIB) agar kiosk & browser yang jamnya melenceng tetap konsisten.
+    const now = toWib((opts.clock ?? Date.now)());
     res.json({
-      data: { kind: p.kind, name: p.name, role: p.roleCode, permissions: [...p.permissions], locations: p.locations },
+      data: {
+        kind: p.kind,
+        name: p.name,
+        role: p.roleCode,
+        permissions: [...p.permissions],
+        locations: p.locations,
+        menus: p.menus ?? [],
+        line: p.line ?? null,
+        today: formatIsoDate(now),
+        now: now.toISOString(),
+      },
       status: 'ok',
     });
   });
@@ -68,14 +81,15 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
       const device = await withTransaction(pool, async (tx) => {
         const { rows } = await tx.query(
           `UPDATE device_pairing_codes SET consumed_at = now()
-           WHERE code_hash = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING id, location`,
+           WHERE code_hash = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING id, location, line_code, device_name`,
           [hashToken(b.code)],
         );
         const code = rows[0];
         if (!code) throw new AppError(422, 'PAIRING_INVALID', 'Kode pairing tidak valid, sudah dipakai, atau kedaluwarsa');
         const created = await tx.query(
-          `INSERT INTO devices (name, token_hash, location) VALUES ($1, $2, $3) RETURNING id, name, location`,
-          [b.name, hashToken(token), code['location'] ?? null],
+          `INSERT INTO devices (name, token_hash, location, line_code) VALUES ($1, $2, $3, $4) RETURNING id, name, location, line_code`,
+          // Nama dari admin saat membuat kode lebih diutamakan daripada nama yang dikirim perangkat.
+          [code['device_name'] ?? b.name, hashToken(token), code['location'] ?? null, code['line_code'] ?? null],
         );
         const d = created.rows[0];
         if (!d) throw new AppError(500, 'INTERNAL', 'Gagal membuat perangkat');

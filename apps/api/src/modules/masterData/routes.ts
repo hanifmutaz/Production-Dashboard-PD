@@ -21,6 +21,15 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
     }
   });
 
+  /** Semua line termasuk nonaktif (Settings → Master Produksi → Line). */
+  r.get('/all', requirePermission('config.edit'), async (_req, res, next) => {
+    try {
+      res.json({ data: await repo.listAll(), status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   r.put('/:line_code', requirePermission('config.edit'), async (req, res, next) => {
     try {
       const code = parseInput(lineCode, req.params['line_code']);
@@ -30,6 +39,9 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
           shift_scheme: z.union([z.literal(2), z.literal(3)]),
           tempat,
           active: z.boolean().default(true),
+          product: z.string().trim().max(130).default(''),
+          external_code: z.string().trim().max(130).default(''),
+          cycle_time: z.number().positive().max(99999).nullable().default(null),
           version: versionField,
         }),
         req.body,
@@ -37,11 +49,12 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
       const row = await withTransaction(pool, async (tx) => {
         const saved = await saveVersioned(tx, {
           version: b.version,
-          insertSql: `INSERT INTO lines (line_code, description, shift_scheme, location, active) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-          insertParams: [code, b.description, b.shift_scheme, b.tempat, b.active],
-          updateSql: `UPDATE lines SET description = $2, shift_scheme = $3, location = $4, active = $5, version = version + 1, updated_at = now()
-                      WHERE line_code = $1 AND version = $6 RETURNING *`,
-          updateParams: [code, b.description, b.shift_scheme, b.tempat, b.active],
+          insertSql: `INSERT INTO lines (line_code, description, shift_scheme, location, active, product, external_code, cycle_time)
+                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+          insertParams: [code, b.description, b.shift_scheme, b.tempat, b.active, b.product, b.external_code, b.cycle_time],
+          updateSql: `UPDATE lines SET description = $2, shift_scheme = $3, location = $4, active = $5, product = $6, external_code = $7, cycle_time = $8,
+                      version = version + 1, updated_at = now() WHERE line_code = $1 AND version = $9 RETURNING *`,
+          updateParams: [code, b.description, b.shift_scheme, b.tempat, b.active, b.product, b.external_code, b.cycle_time],
         });
         await recordAudit(tx, req, { action: 'lines.save', target: code, detail: { ...b } });
         return saved;

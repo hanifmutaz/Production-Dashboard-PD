@@ -80,6 +80,31 @@ export interface SummaryTotals {
   readonly sogo: number;
   readonly shugyo: number;
   readonly kikai: number;
+  /** Stoptime 4M (menit): Machine, Man, Material, Method, Other. */
+  readonly stoptime_4m?: readonly [number, number, number, number, number];
+}
+
+/** Metrik satu line pada satu tanggal (atau total periode bila date = null). */
+export interface LineDayMetrics {
+  readonly line: string;
+  readonly date: string | null;
+  readonly reports: number;
+  readonly plan: number;
+  readonly actual: number;
+  readonly reject: number;
+  readonly reject_ppm: number | null;
+  readonly bekidoritsu: number | null;
+  /** Menit. */
+  readonly stoptime: number;
+  readonly stoptime_4m: readonly [number, number, number, number, number];
+  readonly oee: number | null;
+  readonly oee_anomaly_count: number;
+  readonly sogo: number;
+  readonly shugyo: number;
+  readonly kikai: number;
+  readonly availability_loss: number;
+  readonly performance_loss: number;
+  readonly quality_loss: number;
 }
 
 export interface TrendDay {

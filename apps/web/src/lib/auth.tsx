@@ -7,10 +7,20 @@ export interface Me {
   readonly role: string;
   readonly permissions: readonly string[];
   readonly locations: readonly string[];
+  /** Menu Custom Role (kosong = semua). */
+  readonly menus: readonly string[];
+  /** Perangkat kiosk: line yang ditampilkan. */
+  readonly line: string | null;
+  /** Tanggal hari ini menurut server (WIB, YYYY-MM-DD). */
+  readonly today: string;
+  /** Jam server WIB (ISO, field UTC = jam dinding WIB). */
+  readonly now: string;
 }
 
 interface AuthState {
   readonly me: Me | null;
+  /** Port allowedRoute() mockup: Custom Role & perangkat kiosk. */
+  allowed(route: string): boolean;
   readonly loading: boolean;
   login(username: string, password: string): Promise<void>;
   logout(): Promise<void>;
@@ -47,9 +57,20 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     },
     async logout() {
       await api.post('/api/v3/auth/logout').catch(() => undefined);
+      try {
+        localStorage.removeItem('v3DeviceToken');
+      } catch {
+        /* abaikan */
+      }
       setMe(null);
     },
     can: (permission) => me?.permissions.includes(permission) ?? false,
+    allowed(r) {
+      if (!me) return false;
+      if (me.kind === 'device') return r === 'line' || (me.line !== null && r === `line-${me.line.toLowerCase()}`);
+      if (!me.menus.length) return true;
+      return me.menus.some((m) => r === m || (['master', 'stoptime', 'monitoring-output', 'line'].includes(m) && r.startsWith(`${m}-`)));
+    },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

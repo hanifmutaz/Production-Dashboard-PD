@@ -24,10 +24,54 @@ export const lineDiscoverySchema = z
   })
   .strict();
 
-/** Kunci settings yang punya skema ketat; kunci lain (tampilan, KPI, dst.) disimpan bebas. */
+export const kpiSchema = z
+  .object({
+    yellow: z.number().min(0).max(999),
+    green: z.number().min(1).max(1000),
+    oee: z.number().min(1).max(100),
+    sogo: z.number().min(1).max(100),
+    shugyo: z.number().min(1).max(100),
+    ppm: z.number().int().min(1).max(1_000_000),
+  })
+  .strict()
+  .refine((k) => k.yellow < k.green, 'Ambang kuning harus di bawah ambang hijau.');
+
+export const displaySchema = z
+  .object({
+    home: z.enum(['executive', 'hub', 'monitoring-output']),
+    theme: z.enum(['system', 'light', 'dark']),
+    hub: z.enum(['daily', 'monthly']),
+    kioskRefresh: z.number().int().min(5).max(300),
+    kioskLine: z.string().max(40),
+    investigation: z.enum(['loss', 'output']),
+    export: z.enum(['xlsx', 'csv-excel', 'csv-standard', 'tsv', 'json']),
+  })
+  .strict();
+
+/** Daftar baris generik (Mesin, Produk, Penyebab, Defect, Peringatan): maks 2000 baris, tiap baris punya id & active. */
+const rowsSchema = z
+  .object({
+    rows: z
+      .array(
+        z
+          .object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,70}$/), active: z.boolean() })
+          .catchall(z.union([z.string().max(130), z.number(), z.boolean(), z.null()])),
+      )
+      .max(2000),
+  })
+  .strict();
+
+/** Kunci settings dengan skema ketat. Kunci lain disimpan bebas (maks 64 KB). */
 export const STRICT_SETTINGS: Readonly<Record<string, z.ZodType>> = {
   line_status: lineStatusSchema,
   line_discovery: lineDiscoverySchema,
+  'config.kpi': kpiSchema,
+  'config.display': displaySchema,
+  'config.machines': rowsSchema,
+  'config.products': rowsSchema,
+  'config.causes': rowsSchema,
+  'config.defects': rowsSchema,
+  'config.alerts': rowsSchema,
 };
 
 export interface LineDiscoverySettings {
@@ -40,7 +84,7 @@ export const DEFAULT_LINE_DISCOVERY: LineDiscoverySettings = { shift_scheme: 2, 
 export class SettingsService {
   constructor(
     private readonly db: Queryable,
-    private readonly defaults: { staleThresholdMin: number },
+    private readonly defaults: { staleThresholdMin: number; shift?: Readonly<Record<string, number>> },
   ) {}
 
   private async raw(key: string): Promise<unknown> {
@@ -60,6 +104,10 @@ export class SettingsService {
     const parsed = lineStatusSchema.safeParse(await this.raw('line_status'));
     if (!parsed.success) return defaultLineStatusSettings(this.defaults.staleThresholdMin);
     return { ...parsed.data, requiredFields: [...new Set(parsed.data.requiredFields)] };
+  }
+
+  shiftConfig(): Readonly<Record<string, number>> {
+    return this.defaults.shift ?? {};
   }
 
   async lineDiscovery(): Promise<LineDiscoverySettings> {

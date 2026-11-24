@@ -79,15 +79,35 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     }
   });
 
+  r.delete('/roles/:code', manageUsers, async (req, res, next) => {
+    try {
+      const code = parseInput(z.string().regex(/^[a-z0-9_-]{2,40}$/), req.params['code']);
+      await withTransaction(pool, async (tx) => {
+        const role = (await tx.query(`SELECT id, is_builtin FROM roles WHERE code = $1`, [code])).rows[0];
+        if (!role) throw notFound('Role tidak ada');
+        if (role['is_builtin'] === true) throw forbidden('Role bawaan tidak bisa dihapus');
+        const used = await tx.query(`SELECT id FROM users WHERE role_id = $1 LIMIT 1`, [role['id']]);
+        if (used.rows[0]) throw conflict('Role masih dipakai akun. Pindahkan akun ke role lain dulu.');
+        await tx.query(`DELETE FROM roles WHERE id = $1`, [role['id']]);
+        await recordAudit(tx, req, { action: 'role.delete', target: code });
+      });
+      res.status(204).end();
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // ---- Users ----
   r.get('/users', manageUsers, async (_req, res, next) => {
     try {
+      // Tanpa array_agg agar portabel (pg-mem & Postgres); cakupan lokasi digabung di aplikasi.
       const { rows } = await pool.query(
-        `SELECT u.id, u.username, u.display_name, r.code AS role, u.active, u.locked_until, u.version,
-           COALESCE((SELECT array_agg(location ORDER BY location) FROM user_site_scope s WHERE s.user_id = u.id), '{}') AS locations
-         FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.username`,
+        `SELECT u.id, u.username, u.display_name, r.code AS role, u.active, u.locked_until, u.version FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.username`,
       );
-      res.json({ data: rows, status: 'ok' });
+      const scope = await pool.query(`SELECT user_id, location FROM user_site_scope ORDER BY location`);
+      const byUser = new Map<number, string[]>();
+      for (const s of scope.rows) byUser.set(Number(s['user_id']), [...(byUser.get(Number(s['user_id'])) ?? []), String(s['location'])]);
+      res.json({ data: rows.map((u) => ({ ...u, locations: byUser.get(Number(u['id'])) ?? [] })), status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -180,8 +200,13 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
   // ---- Devices (iPad kiosk) ----
   r.get('/devices', manageDevices, async (_req, res, next) => {
     try {
-      const { rows } = await pool.query(`SELECT id, name, location, created_at, last_seen_at, revoked_at FROM devices ORDER BY id DESC`);
-      res.json({ data: rows, status: 'ok' });
+      const { rows } = await pool.query(
+        `SELECT id, name, location, line_code, created_at, last_seen_at, revoked_at FROM devices ORDER BY id DESC`,
+      );
+      const codes = await pool.query(
+        `SELECT id, location, line_code, device_name, created_at, expires_at FROM device_pairing_codes WHERE consumed_at IS NULL AND expires_at > now() ORDER BY id DESC`,
+      );
+      res.json({ data: { devices: rows, pending: codes.rows }, status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -189,17 +214,28 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
 
   r.post('/devices/pairing-codes', manageDevices, async (req, res, next) => {
     try {
-      const b = parseInput(z.object({ location: tempat.optional() }), req.body ?? {});
+      const b = parseInput(
+        z.object({
+          location: tempat.optional(),
+          line_code: z
+            .string()
+            .regex(/^[A-Za-z0-9_-]{1,40}$/)
+            .optional(),
+          name: z.string().trim().min(1).max(80).optional(),
+        }),
+        req.body ?? {},
+      );
       const code = newPairingCode();
       const expiresAt = new Date(Date.now() + opts.pairingTtlMin * 60_000);
       await withTransaction(pool, async (tx) => {
-        await tx.query(`INSERT INTO device_pairing_codes (code_hash, location, created_by, expires_at) VALUES ($1, $2, $3, $4)`, [
-          hashToken(code),
-          b.location ?? null,
-          principalOf(req).id,
-          expiresAt,
-        ]);
-        await recordAudit(tx, req, { action: 'device.pairing_code.create', detail: { location: b.location ?? null, expiresAt } });
+        await tx.query(
+          `INSERT INTO device_pairing_codes (code_hash, location, line_code, device_name, created_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [hashToken(code), b.location ?? null, b.line_code ?? null, b.name ?? null, principalOf(req).id, expiresAt],
+        );
+        await recordAudit(tx, req, {
+          action: 'device.pairing_code.create',
+          detail: { location: b.location ?? null, line: b.line_code ?? null, expiresAt },
+        });
       });
       res.status(201).json({ data: { code, expiresAt }, status: 'ok' });
     } catch (e) {

@@ -28,6 +28,7 @@ import {
   weightedOee,
   type BreakdownLine,
   type HourlyPoint,
+  type LineDayMetrics,
   type LineDetail,
   type LineStatus,
   type LineStatusSettings,
@@ -369,8 +370,62 @@ export class ReportingService {
       sogo: sum((a) => a.sogo),
       shugyo: sum((a) => a.shugyo),
       kikai: sum((a) => a.kikai),
+      stoptime_4m: [0, 1, 2, 3, 4].map((i) => sum((a) => a.m4[i] ?? 0)) as unknown as [number, number, number, number, number],
       hasData: agg.length > 0,
     };
+  }
+
+  /** Metrik per line per tanggal (perDay) atau total periode per line. Line tanpa report tetap muncul (reports = 0). */
+  async lineMetrics(
+    start: string,
+    end: string,
+    opts: { location?: string; line?: string; perDay: boolean },
+  ): Promise<{ lines: LineRecord[]; rows: LineDayMetrics[] }> {
+    const lines = opts.line ? [await this.requireLine(opts.line)] : await this.lines.listActive(opts.location);
+    const agg = await this.conmas.aggregateByLineDate(
+      lines.map((l) => l.line_code),
+      start,
+      end,
+    );
+    const toMetrics = (line: string, date: string | null, list: readonly LineDayAggregate[]): LineDayMetrics => {
+      const sum = (f: (a: LineDayAggregate) => number): number => list.reduce((acc, a) => acc + f(a), 0);
+      const plan = sum((a) => a.plan);
+      const actual = sum((a) => a.actual);
+      const reject = sum((a) => a.rejectM107);
+      return {
+        line,
+        date,
+        reports: sum((a) => a.rowCount),
+        plan,
+        actual,
+        reject,
+        reject_ppm: rejectPpm(reject, actual),
+        bekidoritsu: plan > 0 ? bekidoritsu(actual, plan) : null,
+        stoptime: stoptimeTotal(
+          sum((a) => a.jamTarget),
+          sum((a) => a.jamEfektif),
+        ),
+        stoptime_4m: [0, 1, 2, 3, 4].map((i) => sum((a) => a.m4[i] ?? 0)) as unknown as [number, number, number, number, number],
+        oee: oeeFromWeightedSums(
+          sum((a) => a.oeeWeighted),
+          sum((a) => a.oeeWeight),
+        ),
+        oee_anomaly_count: sum((a) => a.oeeAnomaly),
+        sogo: sum((a) => a.sogo),
+        shugyo: sum((a) => a.shugyo),
+        kikai: sum((a) => a.kikai),
+        availability_loss: sum((a) => a.availabilityLoss),
+        performance_loss: sum((a) => a.performanceLoss),
+        quality_loss: sum((a) => a.qualityLoss),
+      };
+    };
+    const rows: LineDayMetrics[] = [];
+    for (const l of lines) {
+      const mine = agg.filter((a) => a.line === l.line_code);
+      if (opts.perDay) for (const a of mine) rows.push(toMetrics(l.line_code, a.date, [a]));
+      else rows.push(toMetrics(l.line_code, null, mine));
+    }
+    return { lines, rows };
   }
 
   /** Trend harian dalam rentang; hari tanpa data → hasData=false (bukan 0 palsu). */
@@ -460,6 +515,29 @@ export class ReportingService {
     return [...totals.entries()].map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
   }
 
+  /** Output per jam (slot milik shift) per report, untuk ekspor. */
+  async hourlyRows(start: string, end: string, location?: string) {
+    const lines = await this.lines.listActive(location);
+    const rows = await this.conmas.fetchDetailRows(
+      lines.map((l) => l.line_code),
+      eachDate(start, end),
+    );
+    return rows.flatMap((r) => this.buildHourly(r).map((h) => ({ line: r.line, date: r.tanggal, shift: r.shift, ...h })));
+  }
+
+  /** Reject per kejadian (line, tanggal, shift, defect, qty) untuk ekspor & detail. */
+  async rejectEvents(start: string, end: string, opts: { line?: string; location?: string } = {}) {
+    const lineCodes = opts.line
+      ? [(await this.requireLine(opts.line)).line_code]
+      : (await this.lines.listActive(opts.location)).map((l) => l.line_code);
+    const rows = await this.conmas.fetchSlotEvents(lineCodes, start, end);
+    return rows.flatMap((r) =>
+      r.events
+        .filter((e) => e.name !== null && e.qty !== null)
+        .map((e) => ({ line: r.line, date: r.date, shift: r.shift, name: e.name ?? '', qty: e.qty ?? 0 })),
+    );
+  }
+
   /** Detail stoptime per kejadian (kategori 4M + masalah + menit). */
   async stoptimeDetail(start: string, end: string, opts: { line?: string; location?: string } = {}) {
     const lineCodes = opts.line
@@ -469,7 +547,7 @@ export class ReportingService {
     const events = rows.flatMap((r) =>
       r.events
         .filter((e) => e.kategori !== null || e.masalah !== null || e.minute !== null)
-        .map((e) => ({ line: r.line, date: r.date, kategori: e.kategori, masalah: e.masalah, minute: e.minute })),
+        .map((e) => ({ line: r.line, date: r.date, shift: r.shift, kategori: e.kategori, masalah: e.masalah, minute: e.minute })),
     );
     const byCategory = new Map<string, number>();
     for (const e of events) {
@@ -483,8 +561,8 @@ export class ReportingService {
   }
 
   /** Report mentah per line per hari dalam bentuk SOURCE_BOOK.reports mockup (diperluas). */
-  async reportsForMonth(start: string, end: string, location?: string) {
-    const lines = await this.lines.listActive(location);
+  async reportsForMonth(start: string, end: string, location?: string, line?: string) {
+    const lines = line ? [await this.requireLine(line)] : await this.lines.listActive(location);
     const dates = eachDate(start, end);
     const rows = await this.conmas.fetchDetailRows(
       lines.map((l) => l.line_code),
@@ -515,6 +593,9 @@ export class ReportingService {
         sogo: r.num.sogo,
         shugyo: r.num.shugyo,
         kikai: r.num.kikai,
+        availability_loss: r.num.availability_loss,
+        performance_loss: r.num.performance_loss,
+        quality_loss: r.num.quality_loss,
         items: r.products.filter((x) => x.cl_no).map((x) => [x.product_name, x.cl_no, x.mo_no, x.qty] as const),
       };
     });

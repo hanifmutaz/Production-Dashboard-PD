@@ -44,7 +44,14 @@ describe('otorisasi per role (INV-004)', () => {
   });
 
   it('ekspor: viewer 403, supervisor boleh', async () => {
-    const body = { dataset: 'trend', format: 'csv', start: '2026-11-01', end: '2026-11-03' };
+    const body = {
+      ds: 'line_day',
+      format: 'csv-excel',
+      start: '2026-11-01',
+      end: '2026-11-03',
+      locations: ['internal'],
+      columns: ['tgl', 'line', 'ac'],
+    };
     expect((await viewer.post('/api/v3/export', body)).status).toBe(403);
     const res = await supervisor.post('/api/v3/export', body);
     expect(res.status).toBe(200);
@@ -65,9 +72,18 @@ describe('otorisasi per role (INV-004)', () => {
     expect(saved.status).toBe(200);
     await admin.post('/api/v3/access/users', { username: 'exp1', display_name: 'Exp', password: 'password-panjang-1', role: 'exporter' });
     const exp = await loginAs(h, 'exp1', 'password-panjang-1');
-    expect((await exp.post('/api/v3/export', { dataset: 'reject', format: 'json', start: '2026-11-01', end: '2026-11-02' })).status).toBe(
-      200,
-    );
+    expect(
+      (
+        await exp.post('/api/v3/export', {
+          ds: 'rej',
+          format: 'json',
+          start: '2026-11-01',
+          end: '2026-11-02',
+          locations: ['internal'],
+          columns: ['tgl', 'defect', 'qty'],
+        })
+      ).status,
+    ).toBe(200);
     expect((await exp.put('/api/v3/settings/kpi', { value: {} })).status).toBe(403);
   });
 

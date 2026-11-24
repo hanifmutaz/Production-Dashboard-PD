@@ -25,23 +25,29 @@ Setting baru dari keputusan OQ yang perlu tempat di UI (tanpa mengubah desain; p
 - JS ±330 KB: renderer string-template; `V` = peta rute → fungsi HTML; `render()` membaca `location.hash`.
 - Rute: `executive`, `hub`, `master-<lok>`, `stoptime-<lok>`, `monitoring-output[-<lok>]`, `lines`, `line-<kode>`, `export`, `settings` (+ `defect-*`, `product-*`). Judul halaman dari `PAGE_HEADINGS`.
 
-## Status port per halaman
-| Halaman | Fungsi mockup | Status | Bukti |
+## Status port per halaman (sesi 4: semua halaman)
+| Halaman | Fungsi mockup | Sumber data V3 | Bukti |
 |---|---|---|---|
-| Login | `#demo-login` | ✅ (role demo → username/password; pairing iPad nyata) | paritas 0 diff, screenshot |
-| Shell (sidebar/rail/drawer/header/tema/layar penuh/profil) | `drawNav`, `syncThemeButtons`, `setDrawer` | ✅ | paritas 0 diff |
-| Executive + edit target + Kalender Kerja | `executiveView`, `executiveTargetForm`, `drawWorkCalendar` | ✅ | paritas 0 diff, uji alur browser |
-| Master Hub | `V.hub`, `hubDaily`, `hubMonthly`, `pickHtml` | ⏳ | — |
-| Master Dashboard lokasi | `masterView` | ⏳ | — |
-| Stoptime | `V.stoptime` | ⏳ | — |
-| Monitoring Output | `production-monitoring` (web component + template) | ⏳ | — |
-| Pilih Line / Detail Line (kiosk) | `V.lines`, `V.line` | ⏳ | — |
-| Export | `exportView` | ⏳ | — |
-| Settings (11 section) | `settingsView` | ⏳ | — |
+| Login | `#demo-login` | `/auth/login`, `/auth/pair` | paritas, alur |
+| Shell | `drawNav`, `syncThemeButtons`, `setDrawer`, `allowedRoute` | `/auth/me` (menus, line) | paritas, alur (Custom Role) |
+| Executive + edit target + Kalender Kerja | `executiveView`, `drawWorkCalendar` | `/executive/*` | paritas, alur |
+| Master Hub (Harian/Bulanan) | `V.hub`, `hubK`, `hubT`, `hubLocationCharts`, `<hub-output-trend>` | `/reporting/summary/range`, `/trend/range` | paritas, alur |
+| Master Dashboard lokasi | `masterView`, `masterTrend`, `masterLineTable` | `/summary/range`, `/trend/range`, `/line-metrics`, `/summary/current` | paritas, alur |
+| Stoptime | `V.stoptime`, `stRows` | `/summary/range`, `/line-metrics`, `/stoptime` | paritas, alur |
+| Monitoring Output (shadow DOM) | `<production-monitoring>` + `<template>` | `/lines`, `/planning`, `/line-metrics?perDay`, `/reports`, `/stoptime`, `/executive/calendar` | paritas (di dalam shadow root), alur |
+| Pilih Line | `V.lines` | `/lines` | paritas |
+| Detail Line / kiosk iPad | `V.line`, `lnData`, `lnRange`, `lc` | `/line-detail`, `/line-metrics`, `/reject` | paritas, alur (live, rentang, iPad) |
+| Export | `exportView`, `exportBuilder`, `exPreview`, `DS` | `/export/preview`, `/export`, `/export/templates` | paritas, alur (unduh) |
+| Settings (11 section) | `settingsView`, `settingsList`, `settingsEditor`, `rolePanel`, `devicePanel` | `/settings`, `/lines/all`, `/planning`, `/access/*`, `/executive/calendar` | paritas, alur |
 
-## Penyimpangan dari mockup yang disengaja (perlu diketahui user)
-1. Login: pilihan role demo diganti username + password (wajib, login asli). Field baru memakai gaya field pairing mockup.
-2. Executive: SGP/Systech tampil **On Hold** (label di bawah nama lokasi, semua angka "—"), bukan angka demo.
-3. Executive editor: input **"Waktu masuk"** tidak ditampilkan — jam shift diatur lewat env server, bukan per lokasi dari UI.
-4. Tombol "Simpan (demo)" → "Simpan".
-5. Split "s/d kemarin + hari ini" (OQ-014) **belum ditampilkan**: layout mockup tidak punya tempatnya, jadi UI memakai angka kumulatif lama (inklusif hari ini). Data split sudah tersedia di API — tunggu keputusan user.
+## Penyimpangan dari mockup yang disengaja
+1. **Login**: pilihan role demo → username + password (login asli).
+2. **SGP/Systech**: tampil **On Hold** (angka "—"), tidak ada angka demo.
+3. **Sogo/Shugyo**: mockup menampilkan "kadoritsu (%)"; data asli berupa **menit** (OQ-007b) → label "Sogo"/"Shugyo", nilai `x m`, tanpa warna band.
+4. **Deviasi**: label "Kurang (Plan − Actual)" / "Deviasi (Plan − Actual)" (OQ-006). "Gap" Executive & Monitoring tetap Actual − Target (sama dengan mockup).
+5. **Executive**: input "Waktu masuk" tidak ada (jam shift dari .env). Split s/d kemarin (OQ-014) belum ditampilkan — data tersedia di API.
+6. **Monitoring Output**: kolom "Jam shift" → skema shift ("2 sh"); target line dari Settings → Target Produksi; bila line tanpa target, warna sel harian memakai plan harian dari laporan i-Reporter; bulan = bulan berjalan; dialog kalender hanya Hirose Internal.
+7. **Detail Line**: nama Cell Leader/Teknisi/Inspector dari laporan; NIK & foto belum ada sumbernya ("—"); QR "belum tersedia" (sama dengan mockup). Bar simulasi prototype (`.sim`) dihapus. OEE pada mode live/harian = OEE berbobot **bulan berjalan** (tidak ada OEE per shift yang tervalidasi).
+8. **Export**: file dibuat di server; checkbox BOM dihapus (BOM sudah melekat pada pilihan "CSV untuk Excel"); kolom "CL No/Product No" dataset Stoptime tidak ada (tidak ada sumbernya); template tersimpan per akun di server.
+9. **Settings**: Identitas tanpa unggah logo/foto (belum didukung). Lokasi & Shift **hanya lihat** (lokasi tetap 3; jam shift dari .env). Hak akses = matriks izin role (role bawaan tidak bisa diubah). Kalender Kerja = daftar libur bulan terpilih + dialog kalender. Kartu tambahan: **Status line** (KPI & Ambang, OQ-011/012) dan **Line baru dari i-Reporter** (Master → Line, OQ-017). Section awal = KPI & Ambang (sama dengan mockup).
+10. **Custom Role**: tanpa field Deskripsi (tidak disimpan). Izin = lihat dashboard + Mode Meeting (+ ekspor bila menu Export dipilih).

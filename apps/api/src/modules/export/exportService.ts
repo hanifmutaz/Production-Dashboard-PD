@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 
-export type ExportFormat = 'xlsx' | 'csv' | 'tsv' | 'json';
+export type ExportFormat = 'xlsx' | 'csv-excel' | 'csv-standard' | 'tsv' | 'json';
 export type Cell = string | number | boolean | null;
 
 export interface Table {
@@ -33,7 +33,9 @@ export async function renderTable(table: Table, format: ExportFormat, sheetName:
     const objects = table.rows.map((r) => Object.fromEntries(table.columns.map((c, i) => [c, r[i] ?? null])));
     return { body: Buffer.from(JSON.stringify(objects, null, 2)), contentType: 'application/json; charset=utf-8' };
   }
-  if (format === 'csv') return { body: Buffer.from(`\uFEFF${delimited(table, ',')}`), contentType: 'text/csv; charset=utf-8' };
+  // CSV untuk Excel (locale Indonesia): pemisah ";" + BOM. CSV standar: "," tanpa BOM.
+  if (format === 'csv-excel') return { body: Buffer.from(`\uFEFF${delimited(table, ';')}`), contentType: 'text/csv; charset=utf-8' };
+  if (format === 'csv-standard') return { body: Buffer.from(delimited(table, ',')), contentType: 'text/csv; charset=utf-8' };
   if (format === 'tsv') return { body: Buffer.from(delimited(table, '\t')), contentType: 'text/tab-separated-values; charset=utf-8' };
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(sheetName.slice(0, 31));

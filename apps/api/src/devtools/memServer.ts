@@ -39,6 +39,10 @@ async function main(): Promise<void> {
   );
   const ym = formatIsoDate(now).slice(0, 7).split('-').map(Number);
   dashDb.public.none(`INSERT INTO targets (location, year, month, target) VALUES ('internal', ${ym[0]}, ${ym[1]}, 60000)`);
+  dashDb.public.none(
+    `INSERT INTO line_targets (line_code, year, month, target, work_days) VALUES ('DEV-L01', ${ym[0]}, ${ym[1]}, 36000, 21), ('DEV-L02', ${ym[0]}, ${ym[1]}, 40000, 21)`,
+  );
+  dashDb.public.none(`UPDATE lines SET product = 'PRODUK-DEV-' || substring(line_code from 7 for 1)`);
 
   const { Pool: DashPool } = dashDb.adapters.createPg();
   const { Pool: ConPool } = conDb.adapters.createPg();

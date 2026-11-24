@@ -11,7 +11,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "npm run dev -w @v3/api",
+    "dev": "npm run build -w @v3/shared && npm run dev -w @v3/api",
     "build": "npm run build -w @v3/shared && npm run build -w @v3/api && npm run build -w @v3/web",
     "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/api --noEmit && tsc -p scripts && tsc -p apps/web --noEmit",
     "lint": "eslint packages/shared/src apps/api/src apps/web/src scripts",
@@ -20,14 +20,14 @@
     "test": "vitest run",
     "test:unit": "vitest run packages/shared",
     "test:integration": "vitest run apps/api",
-    "test:e2e": "python scripts/e2e/style_parity.py",
+    "test:e2e": "python scripts/e2e/style_parity.py && python scripts/e2e/flows.py",
     "db:migrate": "node-pg-migrate up -m apps/api/migrations -d DASHBOARD_DATABASE_URL",
     "db:migrate:down": "node-pg-migrate down -m apps/api/migrations -d DASHBOARD_DATABASE_URL",
     "db:seed:dev": "tsx scripts/seedDevFixture.ts",
     "db:seed:admin": "tsx scripts/createAdmin.ts",
     "validate:columns": "tsx scripts/validateColumns.ts",
     "verify": "npm run validate:columns && npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build",
-    "dev:mem": "tsx apps/api/src/devtools/memServer.ts"
+    "dev:mem": "npm run build -w @v3/shared && npm run build -w @v3/web && tsx apps/api/src/devtools/memServer.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

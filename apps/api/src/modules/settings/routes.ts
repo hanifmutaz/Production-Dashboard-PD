@@ -26,7 +26,10 @@ export function settingsRoutes(pool: DbPool, svc: SettingsService): Router {
   /** Nilai efektif settings yang dipakai logika (termasuk default bila belum pernah disimpan). */
   r.get('/effective', requirePermission('dashboard.view'), async (_req, res, next) => {
     try {
-      res.json({ data: { line_status: await svc.lineStatus(), line_discovery: await svc.lineDiscovery() }, status: 'ok' });
+      res.json({
+        data: { line_status: await svc.lineStatus(), line_discovery: await svc.lineDiscovery(), shift: svc.shiftConfig() },
+        status: 'ok',
+      });
     } catch (e) {
       next(e);
     }

@@ -41,12 +41,16 @@ export function registerPgCompat(db: IMemoryDb): void {
   });
 }
 
+const MIGRATIONS = ['1732400000000_init.sql', '1732500000000_planning_lines.sql'];
+
 export function migrationStatements(): string[] {
-  const sql = readFileSync(path.join(REPO_ROOT, 'apps/api/migrations/1732400000000_init.sql'), 'utf8').split('-- Down Migration')[0] ?? '';
-  return sql
-    .split(/;\s*\n/)
-    .map((s) => s.trim())
-    .filter((s) => s && !s.split('\n').every((l) => l.trim().startsWith('--')));
+  return MIGRATIONS.flatMap((file) => {
+    const sql = readFileSync(path.join(REPO_ROOT, 'apps/api/migrations', file), 'utf8').split('-- Down Migration')[0] ?? '';
+    return sql
+      .split(/;\s*\n/)
+      .map((s) => s.trim())
+      .filter((s) => s && !s.split('\n').every((l) => l.trim().startsWith('--')));
+  });
 }
 
 export function newDashboardMemDb(): IMemoryDb {

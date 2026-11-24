@@ -196,7 +196,9 @@ describe('kolom mapping yang belum ada di DB (Masalah 70/86)', () => {
     ]);
     const res = await viewer.get('/api/v3/reporting/stoptime?start=2026-11-24&end=2026-11-24');
     expect(res.status).toBe(200);
-    expect(res.body.data.events).toEqual([{ line: 'L01', date: '2026-11-24', kategori: 'Man', masalah: null, minute: 3 }]);
+    expect(res.body.data.events).toEqual([
+      { line: 'L01', date: '2026-11-24', shift: 'Shift 1 (2 Shift)', kategori: 'Man', masalah: null, minute: 3 },
+    ]);
   });
 });
 

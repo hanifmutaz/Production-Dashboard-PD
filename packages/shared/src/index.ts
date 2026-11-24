@@ -7,3 +7,4 @@ export * from './executive.js';
 export * from './band.js';
 export * from './format.js';
 export * from './contracts.js';
+export * from './exportSpec.js';

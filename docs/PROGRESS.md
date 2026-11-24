@@ -1,6 +1,14 @@
 # PROGRESS — baca ini dulu bila melanjutkan
 
-Branch `feature/v3`. Diperbarui 2026-11-25 (sesi 3).
+Branch `feature/v3`. Diperbarui 2026-11-25 (sesi 4).
+
+## Sesi 4 (2026-11-25) — Tahap E selesai (semua halaman)
+- [x] Master Hub, Master lokasi, Stoptime, Monitoring Output (shadow DOM), Pilih Line, Detail Line/kiosk iPad, Export, Settings (11 section)
+- [x] API baru: `summary/range`, `line-metrics`, `planning` (+ tabel `line_targets`), `lines/all`, ekspor 8 dataset + preview, role delete, perangkat per line, `/auth/me` (today, menus, line)
+- [x] Migrasi 2 (`1732500000000_planning_lines.sql`)
+- [x] Custom Role membatasi menu; iPad kiosk hanya line-nya
+- [x] Uji: paritas style 9 halaman × 6 kombinasi, alur browser 13/13, tes API baru (export, pages)
+- [x] Bug yang ditemukan & diperbaiki: dist `@v3/shared` basi di dev; `array_agg` tidak portabel; pairing tidak menyalin nama/line; default section Settings
 
 ## Sesi 3 (2026-11-25) — Tahap E dimulai
 - [x] OQ-007b ditutup: satuan Sogo/Shugyo/Kikai = menit
@@ -24,7 +32,7 @@ Branch `feature/v3`. Diperbarui 2026-11-25 (sesi 3).
 - [ ] Skrip impor `lines.json` / `executiveTargets.json` / `executiveCalendar.json` (file belum ada)
 - [ ] Tes: list/PATCH user, ekspor xlsx/tsv, template ekspor
 
-## Tahap E — Frontend — **BERJALAN** (3 dari ±10 layar)
+## Tahap E — Frontend — **SELESAI** (semua layar mockup; penyimpangan dicatat di MOCKUP_INVENTORY)
 Butuh upload ulang mockup HTML. Urutan: inventaris halaman → ekstrak CSS/font/ikon → shell (sidebar/rail/router) → Executive → Master Hub → Master lokasi → Monitoring Output → Pilih Line/Detail → Stoptime → Reject/OEE/Detail Produksi → Export → Settings → Login/akses/device/kiosk.
 Keputusan UI yang perlu persetujuan user: lokasi form `line_status` di Settings; tampilan split Executive (OQ-014) bila layout tidak muat.
 

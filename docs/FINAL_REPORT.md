@@ -1,3 +1,17 @@
+# FINAL REPORT — sesi 4 (2026-11-25)
+
+## Ringkas sesi 4
+Tahap E **selesai**: semua halaman mockup di-port ke React dengan data API (Hub, Master lokasi, Stoptime, Monitoring Output, Pilih Line, Detail Line/kiosk iPad, Export, Settings 11 section). Tes: 143 unit/integrasi lulus, paritas style 0 perbedaan (10 layar × 6 kombinasi), alur browser 13/13. Typecheck web belum bisa dijalankan di sandbox (BLK-008). Penyimpangan dari mockup tercatat di `MOCKUP_INVENTORY.md`.
+
+| Gate | Status |
+|---|---|
+| G1/G2/G3 | PASS (semua FR termasuk FR-016 frontend) — dengan catatan penyimpangan disengaja |
+| G4 | PARTIAL — belum di Postgres asli, typecheck web belum |
+| G5/G6 | PARTIAL/FAIL — npm audit, deploy/rollback/backup doc belum |
+| G7 | NOT STARTED |
+
+---
+
 # FINAL REPORT — sesi 3 (2026-11-25)
 
 ## Ringkas sesi 3

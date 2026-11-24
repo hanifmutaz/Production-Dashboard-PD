@@ -73,6 +73,35 @@ export function reportingRoutes(svc: ReportingService, opts: { subcontEnabled: b
     }
   });
 
+  r.get('/summary/range', view, async (req, res, next) => {
+    try {
+      const q = parseInput(rangeQuery, req.query);
+      checkScope(req.principal?.locations ?? [], q.location);
+      if (onHold(q.location)) return void res.json({ data: null, status: 'on_hold' });
+      const s = await svc.rangeSummary(q.start, q.end, q.location ?? 'internal');
+      res.json({ data: s.hasData ? s : null, status: s.hasData ? 'ok' : 'no_data' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.get('/line-metrics', view, async (req, res, next) => {
+    try {
+      const q = parseInput(rangeQuery, req.query);
+      const perDay = req.query['perDay'] === '1';
+      checkScope(req.principal?.locations ?? [], q.location);
+      if (onHold(q.location)) return void res.json({ data: null, status: 'on_hold' });
+      const out = await svc.lineMetrics(q.start, q.end, {
+        location: q.location ?? 'internal',
+        perDay,
+        ...(q.line ? { line: q.line } : {}),
+      });
+      res.json({ data: out, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   r.get('/trend/range', view, async (req, res, next) => {
     try {
       const q = parseInput(rangeQuery, req.query);
@@ -127,7 +156,7 @@ export function reportingRoutes(svc: ReportingService, opts: { subcontEnabled: b
       const q = parseInput(rangeQuery, req.query);
       checkScope(req.principal?.locations ?? [], q.location);
       if (onHold(q.location)) return void res.json({ data: null, status: 'on_hold' });
-      const data = await svc.reportsForMonth(q.start, q.end, q.location ?? 'internal');
+      const data = await svc.reportsForMonth(q.start, q.end, q.location ?? 'internal', q.line);
       res.json({
         data,
         status: data.length ? 'ok' : 'no_data',

@@ -76,11 +76,17 @@ export interface LineDayAggregate {
   readonly sogo: number;
   readonly shugyo: number;
   readonly kikai: number;
+  /** Stoptime 4M (menit): Machine, Man, Material, Method, Other. */
+  readonly m4: readonly [number, number, number, number, number];
+  readonly availabilityLoss: number;
+  readonly performanceLoss: number;
+  readonly qualityLoss: number;
 }
 
 export interface SlotEventRow {
   readonly line: string;
   readonly date: string;
+  readonly shift: string | null;
   readonly events: readonly {
     readonly kategori: string | null;
     readonly masalah: string | null;
@@ -182,7 +188,15 @@ ORDER BY 1, 2`;
   SUM(CASE WHEN ${oee} < 0 OR ${oee} > 100 THEN 1 ELSE 0 END) AS oee_anomaly,
   SUM(${c.numAgg(C.sogo)}) AS sogo,
   SUM(${c.numAgg(C.shugyo)}) AS shugyo,
-  SUM(${c.numAgg(C.kikai)}) AS kikai
+  SUM(${c.numAgg(C.kikai)}) AS kikai,
+  SUM(${c.numAgg(C.stoptime_machine)}) AS m_machine,
+  SUM(${c.numAgg(C.stoptime_man)}) AS m_man,
+  SUM(${c.numAgg(C.stoptime_material)}) AS m_material,
+  SUM(${c.numAgg(C.stoptime_method)}) AS m_method,
+  SUM(${c.numAgg(C.stoptime_other)}) AS m_other,
+  SUM(${c.numAgg(C.availability_loss)}) AS l_avail,
+  SUM(${c.numAgg(C.performance_loss)}) AS l_perf,
+  SUM(${c.numAgg(C.quality_loss)}) AS l_qual
 FROM ${c.view}
 WHERE ${c.lineExpr} IN (${placeholders(n)})
   AND ${c.dateExpr} BETWEEN $${n + 1}::date AND $${n + 2}::date
@@ -204,6 +218,10 @@ ORDER BY ${c.lineExpr}, ${c.dateText}`;
       sogo: toNum0(r['sogo']),
       shugyo: toNum0(r['shugyo']),
       kikai: toNum0(r['kikai']),
+      m4: [toNum0(r['m_machine']), toNum0(r['m_man']), toNum0(r['m_material']), toNum0(r['m_method']), toNum0(r['m_other'])],
+      availabilityLoss: toNum0(r['l_avail']),
+      performanceLoss: toNum0(r['l_perf']),
+      qualityLoss: toNum0(r['l_qual']),
     }));
   }
 
@@ -212,7 +230,7 @@ ORDER BY ${c.lineExpr}, ${c.dateText}`;
     if (lines.length === 0) return [];
     const c = this.cols;
     const n = lines.length;
-    const parts = [`${c.lineExpr} AS line`, `${c.dateText} AS date`];
+    const parts = [`${c.lineExpr} AS line`, `${c.dateText} AS date`, `${c.text(c.rc.COLS.shift)} AS shift`];
     c.rc.REJECT_PAIRS.forEach((p, i) => {
       parts.push(
         `${c.text(p.kategori)} AS s${i}_kategori`,
@@ -230,6 +248,7 @@ WHERE ${c.lineExpr} IN (${placeholders(n)})
     return rows.map((r) => ({
       line: String(r['line']),
       date: String(r['date']),
+      shift: toText(r['shift']),
       events: c.rc.REJECT_PAIRS.map((_, i) => ({
         kategori: toText(r[`s${i}_kategori`]),
         masalah: toText(r[`s${i}_masalah`]),

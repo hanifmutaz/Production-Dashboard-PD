@@ -1,80 +1,102 @@
-import { Router } from 'express';
+import { EXPORT_DATASET_KEYS, EXPORT_DATASETS, eachDate, type ExportDatasetKey } from '@v3/shared';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { canSeeLocation, principalOf, requirePermission } from '../../http/auth.js';
-import { AppError, conflict, forbidden, notFound, parseInput } from '../../http/errors.js';
+import { conflict, forbidden, notFound, parseInput } from '../../http/errors.js';
 import { isoDate, tempat } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { isUniqueViolation } from '../../db/optimistic.js';
 import { recordAudit } from '../audit/auditService.js';
+import type { ExecutiveService } from '../executive/executiveService.js';
 import type { ReportingService } from '../reporting/reportingService.js';
-import { renderTable, selectColumns, type Table } from './exportService.js';
+import { buildExportRows, type ExportFilters } from './exportBuilder.js';
+import { renderTable, type Table } from './exportService.js';
+
+const MAX_ROWS = 100_000;
 
 const exportBody = z
   .object({
-    dataset: z.enum(['breakdown', 'trend', 'reject', 'stoptime']),
-    format: z.enum(['xlsx', 'csv', 'tsv', 'json']),
+    ds: z.enum(EXPORT_DATASET_KEYS as [ExportDatasetKey, ...ExportDatasetKey[]]),
+    format: z.enum(['xlsx', 'csv-excel', 'csv-standard', 'tsv', 'json']).default('csv-excel'),
     start: isoDate,
     end: isoDate,
-    location: tempat.default('internal'),
-    columns: z.array(z.string().max(60)).max(100).optional(),
+    period: z
+      .string()
+      .regex(/^20\d\d-(0[1-9]|1[0-2])$/)
+      .optional(),
+    locations: z.array(tempat).min(1).max(3),
+    lines: z.string().max(200).default(''),
+    shift: z.enum(['all', '1', '2', '3']).default('all'),
+    agg: z.enum(['day', 'tot']).default('day'),
+    columns: z.array(z.string().max(40)).min(1).max(30),
+    name: z
+      .string()
+      .trim()
+      .max(100)
+      .regex(/^[A-Za-z0-9 ._-]*$/, 'nama file hanya huruf, angka, spasi, . _ -')
+      .default(''),
   })
-  .refine((b) => b.start <= b.end, 'start harus ≤ end');
+  .refine((b) => b.start <= b.end, 'start harus ≤ end')
+  .refine((b) => eachDate(b.start, b.end).length <= 366, 'rentang maksimal 366 hari');
 
-async function buildTable(svc: ReportingService, b: z.infer<typeof exportBody>): Promise<Table> {
-  if (b.dataset === 'breakdown') {
-    const d = await svc.lineRangeBreakdown(b.start, b.end, b.location);
-    return {
-      columns: ['line', 'produk', 'lokasi', 'plan', 'actual', 'reject_m107', 'bekidoritsu', 'deviasi_plan_minus_actual', ...d.dates],
-      rows: d.lines.map((l) => [
-        l.line_code,
-        l.product_name,
-        l.tempat,
-        l.output_plan,
-        l.output_actual,
-        l.qty_reject,
-        l.bekidoritsu,
-        l.deviasi,
-        ...l.days.map((x) => (x.hasData ? x.actual : null)),
-      ]),
-    };
-  }
-  if (b.dataset === 'trend') {
-    const t = await svc.rangeTrend(b.start, b.end, { location: b.location });
-    return {
-      columns: ['tanggal', 'plan', 'actual', 'stoptime', 'ada_data'],
-      rows: t.days.map((d) => [d.date, d.hasData ? d.plan : null, d.hasData ? d.actual : null, d.hasData ? d.stoptime : null, d.hasData]),
-    };
-  }
-  if (b.dataset === 'reject') {
-    const items = await svc.rejectDetail(b.start, b.end, { location: b.location });
-    return { columns: ['nama_reject', 'qty'], rows: items.map((i) => [i.name, i.qty]) };
-  }
-  const s = await svc.stoptimeDetail(b.start, b.end, { location: b.location });
-  return {
-    columns: ['line', 'tanggal', 'kategori', 'masalah', 'menit'],
-    rows: s.events.map((e) => [e.line, e.date, e.kategori, e.masalah, e.minute]),
-  };
+type Body = z.infer<typeof exportBody>;
+
+function check(req: Request, b: Body): void {
+  for (const l of b.locations) if (!canSeeLocation(req.principal?.locations ?? [], l)) throw forbidden('Lokasi di luar cakupan akun Anda');
 }
 
-export function exportRoutes(svc: ReportingService, pool: DbPool, opts: { subcontEnabled: boolean }): Router {
+async function buildTable(b: Body, reporting: ReportingService, executive: ExecutiveService): Promise<Table> {
+  const filters: ExportFilters = {
+    ds: b.ds,
+    start: b.start,
+    end: b.end,
+    period: b.period,
+    locations: b.locations,
+    lines: b.lines,
+    shift: b.shift,
+    agg: b.agg,
+  };
+  const rows = (await buildExportRows(filters, reporting, executive)).slice(0, MAX_ROWS);
+  const spec = EXPORT_DATASETS[b.ds].cols as readonly (readonly [string, string, boolean, boolean?])[];
+  const cols = b.columns.map((k) => spec.find((c) => c[0] === k)).filter((c): c is (typeof spec)[number] => c !== undefined);
+  return { columns: cols.map((c) => c[1]), rows: rows.map((r) => cols.map((c) => r[c[0]] ?? null)) };
+}
+
+export function exportRoutes(reporting: ReportingService, executive: ExecutiveService, pool: DbPool): Router {
   const r = Router();
   const can = requirePermission('export.run');
+
+  /** Pratinjau: baris pertama (maks 40) + total baris. Tidak dicatat di audit. */
+  r.post('/preview', can, async (req, res, next) => {
+    try {
+      const b = parseInput(exportBody, req.body);
+      check(req, b);
+      const table = await buildTable(b, reporting, executive);
+      const limit = Math.min(40, Number(req.query['limit'] ?? 8) || 8);
+      res.json({ data: { columns: table.columns, rows: table.rows.slice(0, limit), total: table.rows.length }, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
 
   r.post('/', can, async (req, res, next) => {
     try {
       const b = parseInput(exportBody, req.body);
-      if (!canSeeLocation(req.principal?.locations ?? [], b.location)) throw forbidden('Lokasi di luar cakupan akun Anda');
-      if (b.location !== 'internal' && !opts.subcontEnabled) throw new AppError(422, 'LOCATION_ON_HOLD', 'Lokasi ini sedang On Hold');
-      const table = selectColumns(await buildTable(svc, b), b.columns);
-      const file = await renderTable(table, b.format, b.dataset);
+      check(req, b);
+      const table = await buildTable(b, reporting, executive);
+      const file = await renderTable(table, b.format, EXPORT_DATASETS[b.ds].t);
       await recordAudit(pool, req, {
         action: 'export.run',
-        target: b.dataset,
-        detail: { format: b.format, start: b.start, end: b.end, location: b.location, rows: table.rows.length },
+        target: b.ds,
+        detail: { format: b.format, start: b.start, end: b.end, locations: b.locations, rows: table.rows.length },
       });
-      const filename = `${b.dataset}_${b.location}_${b.start}_${b.end}.${b.format}`;
+      const ext = b.format === 'xlsx' ? 'xlsx' : b.format === 'json' ? 'json' : b.format === 'tsv' ? 'tsv' : 'csv';
+      const base = (b.name || `${b.ds}_${b.ds === 'exec' ? (b.period ?? b.start.slice(0, 7)) : `${b.start}_${b.end}`}`).replace(
+        /\s+/g,
+        '_',
+      );
       res.setHeader('Content-Type', file.contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${base}.${ext}"`);
       res.send(file.body);
     } catch (e) {
       next(e);
@@ -95,7 +117,7 @@ export function exportRoutes(svc: ReportingService, pool: DbPool, opts: { subcon
 
   r.post('/templates', can, async (req, res, next) => {
     try {
-      const b = parseInput(z.object({ name: z.string().trim().min(1).max(80), definition: z.record(z.string(), z.unknown()) }), req.body);
+      const b = parseInput(z.object({ name: z.string().trim().min(1).max(60), definition: z.record(z.string(), z.unknown()) }), req.body);
       const row = await withTransaction(pool, async (tx) => {
         const ins = await tx
           .query(`INSERT INTO export_templates (name, owner_id, definition) VALUES ($1, $2, $3) RETURNING id, name, version`, [
@@ -104,13 +126,32 @@ export function exportRoutes(svc: ReportingService, pool: DbPool, opts: { subcon
             JSON.stringify(b.definition),
           ])
           .catch((err: unknown) => {
-            throw isUniqueViolation(err) ? conflict('Nama template sudah dipakai') : err;
+            throw isUniqueViolation(err) ? conflict('Nama template sudah dipakai. Pilih template itu atau gunakan nama lain.') : err;
           });
         if (!ins.rows[0]) throw conflict('Nama template sudah dipakai');
         await recordAudit(tx, req, { action: 'export.template.create', target: b.name });
         return ins.rows[0];
       });
       res.status(201).json({ data: row, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.put('/templates/:id', can, async (req, res, next) => {
+    try {
+      const id = parseInput(z.coerce.number().int().positive(), req.params['id']);
+      const b = parseInput(z.object({ definition: z.record(z.string(), z.unknown()), version: z.number().int().positive() }), req.body);
+      const row = await withTransaction(pool, async (tx) => {
+        const upd = await tx.query(
+          `UPDATE export_templates SET definition = $3, version = version + 1, updated_at = now() WHERE id = $1 AND owner_id = $2 AND version = $4 RETURNING id, name, version`,
+          [id, principalOf(req).id, JSON.stringify(b.definition), b.version],
+        );
+        if (!upd.rows[0]) throw conflict();
+        await recordAudit(tx, req, { action: 'export.template.update', target: String(id) });
+        return upd.rows[0];
+      });
+      res.json({ data: row, status: 'ok' });
     } catch (e) {
       next(e);
     }

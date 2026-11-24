@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
+import { useConfig } from '../lib/kpi';
 import { Icon } from '../lib/icons';
 import type { Route } from '../lib/router';
 import { SITES, siteName } from '../lib/sites';
@@ -58,6 +59,8 @@ function readRail(): boolean {
 }
 
 function Item({ c, current }: { readonly c: NavItem; readonly current: string }) {
+  const { allowed } = useAuth();
+  if (!allowed(c.id)) return null;
   return (
     <a className="it" href={`#${c.id}`} title={c.t} aria-label={c.t} {...(c.id === current ? { 'aria-current': 'page' as const } : {})}>
       <Icon name={c.ic} />
@@ -67,7 +70,8 @@ function Item({ c, current }: { readonly c: NavItem; readonly current: string })
 }
 
 export function Shell({ route, children }: { readonly route: Route; readonly children: ReactNode }) {
-  const { me, can, logout } = useAuth();
+  const { me, can, logout, allowed } = useAuth();
+  const { name: appName, department } = useConfig();
   const [rail, setRail] = useState(readRail);
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
     'site' in route && route.page !== 'monitoring-output' ? { [route.site]: true } : {},
@@ -78,12 +82,19 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
   const viewRef = useRef<HTMLElement>(null);
   const current = route.page === 'monitoring-output' ? 'monitoring-output' : routeId(route);
   const [title, group] = PAGE_HEADINGS[route.page] ?? ['', ''];
-  const context = 'site' in route && route.page !== 'monitoring-output' ? siteName(route.site) : route.page === 'line' ? route.line : group;
+  const context =
+    'site' in route && route.page !== 'monitoring-output'
+      ? siteName(route.site)
+      : route.page === 'line'
+        ? route.line
+        : route.page === 'settings' && !can('config.edit')
+          ? 'Akses lihat'
+          : group;
 
   useEffect(() => {
-    document.title = `Dashboard Produksi · ${title}${'site' in route || route.page === 'line' ? ` · ${context}` : ''}`;
+    document.title = `${appName} · ${title}${'site' in route || route.page === 'line' ? ` · ${context}` : ''}`;
     setDrawer(false);
-  }, [title, context, route]);
+  }, [title, context, route, appName]);
 
   useEffect(() => {
     const on = (): void => setFull(Boolean(document.fullscreenElement));
@@ -118,8 +129,8 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
         <div className="brand">
           <div className="logo" role="img" aria-label="Logo Hirose"></div>
           <div className="bt">
-            <b>Dashboard Produksi</b>
-            <small>Departemen Produksi</small>
+            <b>{appName}</b>
+            <small>{department}</small>
           </div>
           <button
             className="ib sidebar-toggle"
@@ -147,6 +158,7 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
               <div className="grp" key={`${g.g}-g`}>
                 {g.g === 'Lokasi'
                   ? SITES.map((k) => {
+                      if (!allowed(`master-${k}`) && !allowed(`stoptime-${k}`)) return null;
                       const ch: NavItem[] = [
                         { id: `master-${k}`, t: 'Master Dashboard', ic: 'gauge' },
                         { id: `stoptime-${k}`, t: 'Stoptime', ic: 'clock' },

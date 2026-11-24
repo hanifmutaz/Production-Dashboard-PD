@@ -30,6 +30,10 @@ export interface Principal {
   readonly permissions: ReadonlySet<Permission>;
   /** Lokasi yang boleh dilihat. Kosong = semua lokasi. */
   readonly locations: readonly string[];
+  /** Menu yang boleh dibuka (Custom Role). Kosong = semua menu (role bawaan). */
+  readonly menus?: readonly string[];
+  /** Perangkat kiosk: line yang ditampilkan. */
+  readonly line?: string | null;
 }
 
 declare module 'express-serve-static-core' {

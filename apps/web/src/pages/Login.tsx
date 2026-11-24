@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useConfig } from '../lib/kpi';
 import { Icon } from '../lib/icons';
 import { isDarkTheme, toggleTheme } from '../lib/theme';
 
 // Layout login mockup. Pilihan role demo DIGANTI username/password (login asli di server).
 export function Login() {
   const { login } = useAuth();
+  const { name: appName, department } = useConfig();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [pairMsg, setPairMsg] = useState('');
@@ -37,7 +39,8 @@ export function Login() {
         name: navigator.userAgent.slice(0, 60) || 'iPad',
       });
       if (res.data) localStorage.setItem('v3DeviceToken', res.data.token);
-      setPairMsg('Perangkat terhubung. Mode kiosk akan aktif setelah halaman kiosk tersedia.');
+      setPairMsg('Perangkat terhubung. Membuka mode kiosk…');
+      location.reload();
     } catch (err) {
       setPairMsg(err instanceof ApiError ? err.message : 'Pairing gagal.');
     }
@@ -50,8 +53,8 @@ export function Login() {
         <div className="login-brand">
           <div className="logo" role="img" aria-label="Hirose"></div>
           <div className="login-brand-copy">
-            <b>Dashboard Produksi</b>
-            <small data-department="">Departemen Produksi</small>
+            <b>{appName}</b>
+            <small data-department="">{department}</small>
           </div>
         </div>
       </div>

@@ -8,6 +8,9 @@ export interface LineRecord {
   readonly location: string;
   readonly active: boolean;
   readonly version: number;
+  readonly product: string;
+  readonly external_code: string;
+  readonly cycle_time: number | null;
 }
 
 function mapLine(r: Record<string, unknown>): LineRecord {
@@ -18,6 +21,9 @@ function mapLine(r: Record<string, unknown>): LineRecord {
     location: String(r['location']),
     active: Boolean(r['active']),
     version: Number(r['version']),
+    product: String(r['product'] ?? ''),
+    external_code: String(r['external_code'] ?? ''),
+    cycle_time: r['cycle_time'] === null || r['cycle_time'] === undefined ? null : Number(r['cycle_time']),
   };
 }
 

@@ -11,3 +11,9 @@ Migrasi: `apps/api/migrations/1732400000000_init.sql` (node-pg-migrate, SQL). 23
   - Belum disimpan → default (7 field wajib, stale aktif 120 menit, juga di ringkasan; line baru 2 shift internal).
 
 Status uji: migrasi dijalankan di **pg-mem**. **Belum di Postgres asli** (BLK-001). Backup/restore belum dibuat.
+
+## Migrasi 2 — `1732500000000_planning_lines.sql` (sesi 4)
+- `lines` + `product`, `external_code`, `cycle_time` (Settings → Line).
+- Tabel baru `line_targets(line_code, year, month, target, work_days, note, version, …)` — target per line (Monitoring Output).
+- `device_pairing_codes` + `line_code`, `device_name`; `devices` + `line_code` — iPad terikat ke satu line.
+- Settings `config.*` (tanpa migrasi): `config.general`, `config.kpi` (ketat), `config.display` (ketat), `config.source`, `config.machines|products|causes|defects|alerts` (`{rows}` ketat).

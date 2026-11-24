@@ -8,7 +8,8 @@ apps/api          Express: routes → service → repository
   modules/reporting    baca ConMas (read-only)
   modules/executive    target, kalender, pencapaian (+ split s/d kemarin / hari ini)
   modules/masterData   line registry (+discovery, default dari Settings)
-  modules/settings     settings versioned + SettingsService (line_status, line_discovery)
+  modules/settings     settings versioned + SettingsService (line_status, line_discovery, config.*)
+  modules/planning     target per line (line_targets) + baca target lokasi
   modules/auth         login, sesi, pairing
   modules/access       user, role, custom role, device, audit view
   modules/export       ekspor server-side + template
@@ -20,7 +21,8 @@ apps/web          React 19 + Vite 8 (tanpa UI kit). CSS mockup diekstrak verbati
   src/iconData.ts                     objek IC mockup (45 ikon) + ic() → <Icon/>
   src/lib/*                           api, auth, router hash, tema, format, achievement
   src/shell/Shell.tsx                 sidebar/rail/drawer/header/tema/layar penuh/profil
-  src/pages/*                         satu file per halaman mockup
+  src/components/*                    port helper mockup (sec, kp2, tcard, m4, pickHtml, hub-output-trend, lc)
+  src/pages/*                         satu file per halaman mockup (settings/ = 11 section)
 ```
 
 ## ADR ringkas
@@ -37,3 +39,6 @@ apps/web          React 19 + Vite 8 (tanpa UI kit). CSS mockup diekstrak verbati
 - **ADR-002 Router/state frontend (baru):** router **hash** buatan sendiri (`lib/router.ts`), bukan React Router. Alasan: mockup memakai hash (`#executive`, `#line-41hr121`) sehingga URL & bookmark identik; React Router juga tidak tersedia offline. State lokal per halaman (`useState`), sesi dari `AuthProvider` (`/api/v3/auth/me`). URL lama `?view=` diarahkan ke hash baru.
 - **ADR-012 CSS mockup tanpa transformasi (baru):** Vite memakai transformer PostCSS dan `cssMinify:false`. Lightningcss mengubah `light-dark()` mockup dan menghilangkan border/tema (terbukti saat uji paritas). CSS di dalam `<template>` mockup dipisah karena di mockup hanya berlaku di shadow DOM komponen Monitoring.
 - **ADR-013 Server dev tanpa Postgres (baru):** `npm run dev:mem` = API + web build + pg-mem + fixture sintetis. Hanya dev; ditolak di production.
+- **ADR-014 Monitoring di shadow DOM (baru):** halaman Monitoring dirender lewat `createPortal` ke shadow root elemen `<production-monitoring>`, dengan CSS `<template>` mockup di dalamnya — isolasi CSS identik mockup. React mendengarkan event pada container portal sehingga `change`/`input` (tidak composed) tetap bekerja.
+- **ADR-015 Jam server (baru):** `/auth/me` mengembalikan `today`/`now` (WIB) dan semua halaman memakai tanggal server, bukan jam perangkat (iPad kiosk bisa melenceng).
+- **ADR-016 Settings generik (baru):** daftar Mesin/Produk/Penyebab/Defect/Peringatan disimpan sebagai `config.<section>` = `{rows:[...]}` (divalidasi zod, maks 2000 baris). Data yang punya tabel sendiri (line, target, akun, role, perangkat, kalender) memakai API masing-masing — satu sumber kebenaran.

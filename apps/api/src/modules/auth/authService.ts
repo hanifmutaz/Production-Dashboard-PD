@@ -38,6 +38,7 @@ export async function loadUserPrincipal(db: Queryable, userId: number): Promise<
   if (!u) return null;
   const perms = await db.query(`SELECT permission FROM role_permissions WHERE role_id = $1`, [u['role_id']]);
   const scope = await db.query(`SELECT location FROM user_site_scope WHERE user_id = $1 ORDER BY location`, [userId]);
+  const menus = await db.query(`SELECT menu FROM role_menus WHERE role_id = $1 ORDER BY menu`, [u['role_id']]);
   return {
     kind: 'user',
     id: Number(u['id']),
@@ -45,6 +46,7 @@ export async function loadUserPrincipal(db: Queryable, userId: number): Promise<
     roleCode: String(u['role_code']),
     permissions: toPermissions(perms.rows.map((p) => p['permission'])),
     locations: scope.rows.map((s) => String(s['location'])),
+    menus: menus.rows.map((m) => String(m['menu'])),
   };
 }
 
@@ -119,7 +121,7 @@ export class AuthService {
 
   async resolveDevice(token: string): Promise<Principal | null> {
     const { rows } = await this.pool.query(
-      `UPDATE devices SET last_seen_at = now() WHERE token_hash = $1 AND revoked_at IS NULL RETURNING id, name, location`,
+      `UPDATE devices SET last_seen_at = now() WHERE token_hash = $1 AND revoked_at IS NULL RETURNING id, name, location, line_code`,
       [hashToken(token)],
     );
     const d = rows[0];
@@ -131,6 +133,8 @@ export class AuthService {
       roleCode: 'kiosk',
       permissions: DEVICE_PERMISSIONS,
       locations: d['location'] ? [String(d['location'])] : [],
+      menus: ['line'],
+      line: d['line_code'] ? String(d['line_code']) : null,
     };
   }
 
