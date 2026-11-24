@@ -131,7 +131,7 @@ export function reportingRoutes(svc: ReportingService, opts: { subcontEnabled: b
       res.json({
         data,
         status: data.length ? 'ok' : 'no_data',
-        meta: { unvalidated: ['availability', 'performance', 'quality', 'sogo', 'shugyo', 'kikai', 'reject_p027', 'reject_p028'] },
+        meta: { units: { stoptime: 'menit' }, pending: ['satuan sogo/shugyo/kikai belum dikonfirmasi'] },
       });
     } catch (e) {
       next(e);

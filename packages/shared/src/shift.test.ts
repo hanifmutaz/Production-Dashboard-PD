@@ -183,19 +183,25 @@ describe('pickActiveRow', () => {
   });
 });
 
-describe('getLineStatus3', () => {
-  const live = { historical: false, shiftRequested: false, graceMin: 120, stale: false };
+describe('getLineStatus3 (OQ-011)', () => {
+  const live = { historical: false, shiftRequested: false, graceMin: 120, stale: false, complete: true };
   it('tanpa baris dalam masa tunggu → waiting; lewat → not_running', () => {
     expect(getLineStatus3({ ...live, hasRow: false, elapsedMin: 120 })).toBe('waiting');
     expect(getLineStatus3({ ...live, hasRow: false, elapsedMin: 121 })).toBe('not_running');
   });
-  it('ada baris: stale → not_running; tidak → running', () => {
+  it('baris ada tapi field wajib belum lengkap → waiting/not_running sesuai masa tunggu', () => {
+    expect(getLineStatus3({ ...live, hasRow: true, complete: false, elapsedMin: 60 })).toBe('waiting');
+    expect(getLineStatus3({ ...live, hasRow: true, complete: false, elapsedMin: 300 })).toBe('not_running');
+  });
+  it('baris lengkap: stale → not_running; tidak → running', () => {
     expect(getLineStatus3({ ...live, hasRow: true, elapsedMin: 300, stale: true })).toBe('not_running');
     expect(getLineStatus3({ ...live, hasRow: true, elapsedMin: 300 })).toBe('running');
   });
-  it('historis: no_data / shift_not_found', () => {
+  it('historis: no_data / shift_not_found; ada baris → lengkap ? running : not_running', () => {
     expect(getLineStatus3({ ...live, historical: true, hasRow: false, elapsedMin: 0 })).toBe('no_data');
     expect(getLineStatus3({ ...live, historical: true, shiftRequested: true, hasRow: false, elapsedMin: 0 })).toBe('shift_not_found');
+    expect(getLineStatus3({ ...live, historical: true, hasRow: true, elapsedMin: 0 })).toBe('running');
+    expect(getLineStatus3({ ...live, historical: true, hasRow: true, complete: false, elapsedMin: 0 })).toBe('not_running');
   });
 });
 

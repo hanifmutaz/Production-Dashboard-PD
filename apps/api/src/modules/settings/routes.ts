@@ -6,11 +6,12 @@ import { versionField } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
 import { recordAudit } from '../audit/auditService.js';
+import { STRICT_SETTINGS, type SettingsService } from './settingsService.js';
 
 // Kunci section mengikuti SETTINGS_SECTIONS mockup (lihat docs/MOCKUP_INVENTORY.md).
 const settingKey = z.string().regex(/^[a-z][a-z0-9_.-]{1,60}$/);
 
-export function settingsRoutes(pool: DbPool): Router {
+export function settingsRoutes(pool: DbPool, svc: SettingsService): Router {
   const r = Router();
 
   r.get('/', requirePermission('dashboard.view'), async (_req, res, next) => {
@@ -22,11 +23,22 @@ export function settingsRoutes(pool: DbPool): Router {
     }
   });
 
+  /** Nilai efektif settings yang dipakai logika (termasuk default bila belum pernah disimpan). */
+  r.get('/effective', requirePermission('dashboard.view'), async (_req, res, next) => {
+    try {
+      res.json({ data: { line_status: await svc.lineStatus(), line_discovery: await svc.lineDiscovery() }, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   r.put('/:key', requirePermission('config.edit'), async (req, res, next) => {
     try {
       const key = parseInput(settingKey, req.params['key']);
       const b = parseInput(z.object({ value: z.record(z.string(), z.unknown()), version: versionField }), req.body);
-      const json = JSON.stringify(b.value);
+      const strict = STRICT_SETTINGS[key];
+      const value = strict ? parseInput(strict, b.value) : b.value;
+      const json = JSON.stringify(value);
       if (json.length > 64_000) throw new Error('settings terlalu besar');
       const row = await withTransaction(pool, async (tx) => {
         const saved = await saveVersioned(tx, {

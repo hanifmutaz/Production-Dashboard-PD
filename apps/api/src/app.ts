@@ -23,6 +23,7 @@ import { ConmasRepository } from './modules/reporting/conmasRepository.js';
 import { ReportingService, type Clock } from './modules/reporting/reportingService.js';
 import { reportingRoutes } from './modules/reporting/routes.js';
 import { settingsRoutes } from './modules/settings/routes.js';
+import { SettingsService } from './modules/settings/settingsService.js';
 import { syncRoutes } from './modules/sync/routes.js';
 
 export interface AppDeps {
@@ -74,7 +75,8 @@ export function createApp(deps: AppDeps): Express {
   const linesRepo = new LinesRepository(deps.dashboard);
   const cols = new ColumnSql(deps.reportColumns, deps.availableColumns);
   const conmasRepo = new ConmasRepository(deps.conmas, cols);
-  const reporting = new ReportingService(conmasRepo, linesRepo, deps.shift, deps.clock);
+  const settingsService = new SettingsService(deps.dashboard, { staleThresholdMin: deps.shift.lineNotRunningThresholdMin });
+  const reporting = new ReportingService(conmasRepo, linesRepo, deps.shift, settingsService, deps.clock);
   const executive = new ExecutiveService(deps.dashboard, reporting, {
     subcontEnabled: deps.subcontEnabled,
     cacheSec: deps.executiveCacheSec,
@@ -109,8 +111,8 @@ export function createApp(deps: AppDeps): Express {
   app.use('/api/v3', requireAuth);
   app.use('/api/v3/reporting', reportingRoutes(reporting, { subcontEnabled: deps.subcontEnabled }));
   app.use('/api/v3/executive', executiveRoutes(executive, deps.dashboard));
-  app.use('/api/v3/lines', linesRoutes(linesRepo, conmasRepo, deps.dashboard));
-  app.use('/api/v3/settings', settingsRoutes(deps.dashboard));
+  app.use('/api/v3/lines', linesRoutes(linesRepo, conmasRepo, deps.dashboard, settingsService));
+  app.use('/api/v3/settings', settingsRoutes(deps.dashboard, settingsService));
   app.use('/api/v3/access', accessRoutes(deps.dashboard, { pairingTtlMin: deps.pairingTtlMin }));
   app.use('/api/v3/export', exportRoutes(reporting, deps.dashboard, { subcontEnabled: deps.subcontEnabled }));
 

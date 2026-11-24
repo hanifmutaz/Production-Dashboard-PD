@@ -54,6 +54,11 @@ export interface ReportSpec {
     readonly other?: number;
   };
   readonly repTopId?: number;
+  /** null = Line Leader kosong (untuk uji syarat Running). */
+  readonly lineLeader?: string | null;
+  readonly sogo?: number;
+  readonly shugyo?: number;
+  readonly kikai?: number;
   readonly updatedAt?: string;
 }
 
@@ -67,6 +72,7 @@ export function buildRow(rc: ReportColumns, spec: ReportSpec): FixtureRow {
   row[C.cell_leader] = 'CL Dev';
   row[C.teknisi] = 'Teknisi Dev';
   row[C.inspector] = 'Inspector Dev';
+  row[C.line_leader] = spec.lineLeader === undefined ? 'LL Dev' : spec.lineLeader;
   row[C.output_plan] = spec.plan ?? null;
   row[C.output_actual] = spec.actual ?? null;
   row[C.reject_m107] = spec.rejectM107 ?? null;
@@ -75,6 +81,9 @@ export function buildRow(rc: ReportColumns, spec: ReportSpec): FixtureRow {
   row[C.oee] = spec.oee === '' ? null : (spec.oee ?? null);
   row[C.rep_top_id] = spec.repTopId ?? null;
   row[C.rev_no] = 1;
+  row[C.sogo] = spec.sogo ?? null;
+  row[C.shugyo] = spec.shugyo ?? null;
+  row[C.kikai] = spec.kikai ?? null;
   row[C.sys_update_time] = spec.updatedAt ?? `${spec.date} 23:00:00`;
   const s4 = spec.stoptime4m ?? {};
   row[C.stoptime_man] = s4.man ?? null;
@@ -144,8 +153,8 @@ export function standardScenario(year: number, month: number, days: number): Rep
           plan,
           actual,
           rejectM107: (d + s) % 9,
-          jamTarget: 8,
-          jamEfektif: 8 - ((d + s) % 4) * 0.25,
+          jamTarget: 480,
+          jamEfektif: 480 - ((d + s) % 4) * 15,
           oee: 70 + ((d * 3 + s) % 25),
           hourly,
           products: [{ cl: `CL-${li}${s}`, name: `PRODUK-DEV-${li + 1}`, mo: `MO-${d}${s}`, qty: plan }],

@@ -61,6 +61,7 @@ describe('reporting API (fixture pg-mem)', () => {
         jamEfektif: 8,
         oee: '',
         hourly: hourlyFull(0, 4, 50, 50),
+        products: [{ cl: 'CL-C', name: 'PRODUK C', mo: 'MO3', qty: 500 }],
       },
     ]);
   });
@@ -76,12 +77,13 @@ describe('reporting API (fixture pg-mem)', () => {
     expect(res.body.status).toBe('running');
     expect(d.tanggal).toBe('2026-11-24');
     expect(d.shift).toBe('Shift 1 (2 Shift)');
-    expect(d.deviasi_target).toBe(-550);
+    expect(d.deviasi_target).toBe(550); // OQ-006: plan − actual
+    expect(d.missing_fields).toEqual([]);
     expect(d.stoptime_total).toBe(1);
     expect(d.availability_operator).toBe(46);
     expect(d.product_name).toBe('PRODUK B'); // slot terakhir yang terisi
     expect(d.hourly).toHaveLength(9);
-    expect(d.hourly[0]).toMatchObject({ slot: 1, label: '07-08', output_plan: 120, output_actual: 100, deviasi: -20, pencapaian: 83 });
+    expect(d.hourly[0]).toMatchObject({ slot: 1, label: '07-08', output_plan: 120, output_actual: 100, deviasi: 20, pencapaian: 83 });
     expect(d.hourly[2]).toMatchObject({ slot: 3, output_actual: null, deviasi: null, pencapaian: null });
     // slot 0 (06-07, data 999) bukan milik Shift 1 2-shift → tidak tampil
     expect(d.hourly.some((x: { slot: number }) => x.slot === 0)).toBe(false);
@@ -121,12 +123,15 @@ describe('reporting API (fixture pg-mem)', () => {
     expect(res.body.data).toMatchObject({
       lines_total: 3,
       lines_running: 2,
+      lines_waiting: 0,
       lines_not_running: 1,
       output_plan: 1500,
       output_actual: 950,
       qty_reject: 10,
+      reject_ppm: 10417, // 10 / (950 + 10) × 1e6
       stoptime_total: 1,
-      avg_oee: 90,
+      oee: 90,
+      oee_anomaly_count: 0,
     });
   });
 
@@ -137,10 +142,17 @@ describe('reporting API (fixture pg-mem)', () => {
     expect(res.body.data.totals).toMatchObject({ plan: 2400, actual: 1800, bekidoritsu: 75 });
   });
 
-  it('breakdown: deviasi = plan − actual (perilaku lama), produk live dari report terbaru', async () => {
+  it('breakdown: deviasi = plan − actual, PPM dari SUM, produk live dari report terbaru', async () => {
     const res = await viewer.get('/api/v3/reporting/breakdown?start=2026-11-23&end=2026-11-24');
     const l01 = res.body.data.lines.find((l: { line_code: string }) => l.line_code === 'L01');
-    expect(l01).toMatchObject({ output_plan: 1900, output_actual: 1300, deviasi: 600, bekidoritsu: 68.4, product_name: 'PRODUK B' });
+    expect(l01).toMatchObject({
+      output_plan: 1900,
+      output_actual: 1300,
+      deviasi: 600,
+      reject_ppm: 11407,
+      bekidoritsu: 68.4,
+      product_name: 'PRODUK B',
+    });
     const l02 = res.body.data.lines.find((l: { line_code: string }) => l.line_code === 'L02');
     expect(l02.days.every((d: { hasData: boolean }) => !d.hasData)).toBe(true);
   });

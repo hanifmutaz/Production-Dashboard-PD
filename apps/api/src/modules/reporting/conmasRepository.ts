@@ -67,8 +67,15 @@ export interface LineDayAggregate {
   readonly rejectM107: number;
   readonly jamTarget: number;
   readonly jamEfektif: number;
-  readonly oeeSum: number;
-  readonly oeeCount: number;
+  /** Σ(OEE × jam_target) untuk report dengan OEE 0–100 dan jam_target > 0 (OQ-004). */
+  readonly oeeWeighted: number;
+  readonly oeeWeight: number;
+  /** Jumlah report dengan OEE di luar 0–100 (OQ-005). */
+  readonly oeeAnomaly: number;
+  /** SUM kolom TOTAL (OQ-007). */
+  readonly sogo: number;
+  readonly shugyo: number;
+  readonly kikai: number;
 }
 
 export interface SlotEventRow {
@@ -155,20 +162,27 @@ ORDER BY 1, 2`;
     };
   }
 
-  /** Agregat SUM per line per tanggal (numeric-safe). OEE: SUM & COUNT baris berdata untuk rata-rata sederhana. */
+  /** Agregat SUM per line per tanggal (numeric-safe). OEE berbobot jam_target, anomali dihitung terpisah. */
   async aggregateByLineDate(lines: readonly string[], start: string, end: string): Promise<LineDayAggregate[]> {
     if (lines.length === 0) return [];
     const c = this.cols;
     const C = c.rc.COLS;
     const n = lines.length;
+    const oee = c.num(C.oee);
+    const jt = c.num(C.jam_target);
+    const validOee = `${oee} >= 0 AND ${oee} <= 100 AND ${jt} > 0`;
     const sql = `SELECT ${c.lineExpr} AS line, ${c.dateText} AS date, COUNT(*) AS row_count,
   SUM(${c.numAgg(C.output_plan)}) AS plan,
   SUM(${c.numAgg(C.output_actual)}) AS actual,
   SUM(${c.numAgg(C.reject_m107)}) AS reject_m107,
   SUM(${c.numAgg(C.jam_target)}) AS jam_target,
   SUM(${c.numAgg(C.jam_efektif)}) AS jam_efektif,
-  SUM(${c.num(C.oee)}) AS oee_sum,
-  COUNT(${c.num(C.oee)}) AS oee_count
+  SUM(CASE WHEN ${validOee} THEN ${oee} * ${jt} ELSE 0 END) AS oee_weighted,
+  SUM(CASE WHEN ${validOee} THEN ${jt} ELSE 0 END) AS oee_weight,
+  SUM(CASE WHEN ${oee} < 0 OR ${oee} > 100 THEN 1 ELSE 0 END) AS oee_anomaly,
+  SUM(${c.numAgg(C.sogo)}) AS sogo,
+  SUM(${c.numAgg(C.shugyo)}) AS shugyo,
+  SUM(${c.numAgg(C.kikai)}) AS kikai
 FROM ${c.view}
 WHERE ${c.lineExpr} IN (${placeholders(n)})
   AND ${c.dateExpr} BETWEEN $${n + 1}::date AND $${n + 2}::date
@@ -184,8 +198,12 @@ ORDER BY ${c.lineExpr}, ${c.dateText}`;
       rejectM107: toNum0(r['reject_m107']),
       jamTarget: toNum0(r['jam_target']),
       jamEfektif: toNum0(r['jam_efektif']),
-      oeeSum: toNum0(r['oee_sum']),
-      oeeCount: toNum0(r['oee_count']),
+      oeeWeighted: toNum0(r['oee_weighted']),
+      oeeWeight: toNum0(r['oee_weight']),
+      oeeAnomaly: toNum0(r['oee_anomaly']),
+      sogo: toNum0(r['sogo']),
+      shugyo: toNum0(r['shugyo']),
+      kikai: toNum0(r['kikai']),
     }));
   }
 

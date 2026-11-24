@@ -259,6 +259,9 @@ export type LineStatus = 'waiting' | 'running' | 'not_running' | 'no_data' | 'sh
 
 export interface LineStatusInput {
   readonly hasRow: boolean;
+  /** Semua field wajib (Settings → syarat Running) terisi. */
+  readonly complete: boolean;
+  /** Hasil cek stale; caller mengirim false bila cek stale dimatikan di Settings. */
   readonly stale: boolean;
   /** Menit sejak awal shift berjalan (mode live). */
   readonly elapsedMin: number;
@@ -267,12 +270,18 @@ export interface LineStatusInput {
   readonly shiftRequested: boolean;
 }
 
+/**
+ * Status line (OQ-011):
+ * - live, belum ada report ATAU report belum lengkap: ≤ grace → waiting, lewat → not_running
+ * - live, report lengkap: stale → not_running, selain itu running
+ * - historis: tidak ada report → no_data / shift_not_found; ada → lengkap ? running : not_running
+ */
 export function getLineStatus3(input: LineStatusInput): LineStatus {
   if (input.historical) {
-    if (input.hasRow) return 'running';
-    return input.shiftRequested ? 'shift_not_found' : 'no_data';
+    if (!input.hasRow) return input.shiftRequested ? 'shift_not_found' : 'no_data';
+    return input.complete ? 'running' : 'not_running';
   }
-  if (!input.hasRow) return input.elapsedMin <= input.graceMin ? 'waiting' : 'not_running';
+  if (!input.hasRow || !input.complete) return input.elapsedMin <= input.graceMin ? 'waiting' : 'not_running';
   return input.stale ? 'not_running' : 'running';
 }
 

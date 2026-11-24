@@ -7,9 +7,10 @@ import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
 import { recordAudit } from '../audit/auditService.js';
 import type { ConmasRepository } from '../reporting/conmasRepository.js';
+import type { SettingsService } from '../settings/settingsService.js';
 import type { LinesRepository } from './linesRepository.js';
 
-export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, pool: DbPool): Router {
+export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, pool: DbPool, settings: SettingsService): Router {
   const r = Router();
 
   r.get('/', requirePermission('dashboard.view'), async (_req, res, next) => {
@@ -79,21 +80,23 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
     }
   });
 
-  /** Daftarkan line baru hasil discovery (default 2 shift, internal). Line yang sudah ada tidak diubah. */
+  /** Daftarkan line baru hasil discovery. Default skema shift & lokasi dari Settings → line_discovery (OQ-017). */
   r.post('/sync', requirePermission('config.edit'), async (req, res, next) => {
     try {
       const known = new Set((await repo.listAll()).map((l) => l.line_code));
       const found = (await conmas.distinctLines()).filter((l) => /^[A-Za-z0-9_-]+$/.test(l) && !known.has(l));
+      const def = await settings.lineDiscovery();
       await withTransaction(pool, async (tx) => {
         for (const code of found) {
-          await tx.query(
-            `INSERT INTO lines (line_code, shift_scheme, location) VALUES ($1, 2, 'internal') ON CONFLICT (line_code) DO NOTHING`,
-            [code],
-          );
+          await tx.query(`INSERT INTO lines (line_code, shift_scheme, location) VALUES ($1, $2, $3) ON CONFLICT (line_code) DO NOTHING`, [
+            code,
+            def.shift_scheme,
+            def.location,
+          ]);
         }
-        await recordAudit(tx, req, { action: 'lines.sync', detail: { added: found } });
+        await recordAudit(tx, req, { action: 'lines.sync', detail: { added: found, defaults: def } });
       });
-      res.json({ data: { added: found }, status: 'ok' });
+      res.json({ data: { added: found, defaults: def }, status: 'ok' });
     } catch (e) {
       next(e);
     }

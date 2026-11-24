@@ -5,12 +5,18 @@ import {
   daysInMonth,
   defaultHolidays,
   elapsedWorkingDays,
+  elapsedWorkingDaysBefore,
+  formatIsoDate,
+  isWorkingDay,
   normalizeHolidays,
+  splitAchievement,
   sumAchievements,
+  sumSplitAchievements,
   toWib,
   workingDays,
   type Achievement,
   type SourceStatus,
+  type SplitAchievement,
   type Tempat,
   TEMPAT_LIST,
 } from '@v3/shared';
@@ -28,7 +34,10 @@ export interface LocationAchievement {
   readonly elapsedWorkingDays: number;
   readonly holidays: readonly string[];
   readonly calendarVersion: number | null;
+  /** Pencapaian bulan berjalan (perilaku lama, target hari ini dihitung penuh). */
   readonly achievement: Achievement | null;
+  /** OQ-014: s/d kemarin (hari lengkap) + progres hari ini dipisah. */
+  readonly split: SplitAchievement | null;
 }
 
 export class ExecutiveService {
@@ -93,9 +102,21 @@ export class ExecutiveService {
       const wd = workingDays(year, month, cal.holidays);
       const ewd = elapsedWorkingDays(year, month, cal.holidays, today);
       let achievement: Achievement | null = null;
+      let split: SplitAchievement | null = null;
       if (status === 'ok' && target) {
         const actual = await this.monthlyActual(year, month);
         achievement = computeAchievement({ target: target.target, actual, workingDays: wd, elapsedWorkingDays: ewd });
+        const todayIso = formatIsoDate(today);
+        const todayInMonth = todayIso.startsWith(`${year}-${pad2(month)}-`);
+        const actualToday = todayInMonth ? (await this.reporting.rangeSummary(todayIso, todayIso, 'internal')).output_actual : 0;
+        split = splitAchievement({
+          dailyTarget: achievement.dailyTarget,
+          elapsedWorkingDaysBefore: elapsedWorkingDaysBefore(year, month, cal.holidays, today),
+          actualBeforeToday: actual - actualToday,
+          actualToday,
+          todayInMonth,
+          todayIsWorkingDay: todayInMonth && isWorkingDay(todayIso, year, month, cal.holidays),
+        });
       }
       locations.push({
         tempat,
@@ -107,15 +128,18 @@ export class ExecutiveService {
         holidays: cal.holidays,
         calendarVersion: cal.version,
         achievement,
+        split,
       });
     }
     const available = locations.flatMap((l) => (l.achievement ? [l.achievement] : []));
+    const splits = locations.flatMap((l) => (l.split ? [l.split] : []));
     return {
       year,
       month,
       locations,
       // Total = jumlah lokasi yang datanya tersedia; lokasi On Hold tidak dihitung sebagai 0.
       total: available.length > 0 ? sumAchievements(available) : null,
+      totalSplit: splits.length > 0 ? sumSplitAchievements(splits) : null,
       totalIncludes: locations.filter((l) => l.achievement).map((l) => l.tempat),
     };
   }

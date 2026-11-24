@@ -1,9 +1,8 @@
-// Logika reporting (LOGIC_SPEC §2, §4, §7, §8). Rumus diambil dari @v3/shared — tidak ditulis ulang di sini.
+// Logika reporting (LOGIC_SPEC §2, §4, §7, §8 + keputusan OPEN_QUESTIONS 2026-11-25).
+// Rumus diambil dari @v3/shared — tidak ditulis ulang di sini.
 import {
   addDays,
-  averageOee,
   bekidoritsu,
-  breakdownDeviasi,
   deviasi,
   eachDate,
   elapsedSince,
@@ -12,28 +11,36 @@ import {
   getShiftSlots,
   hourlyAchievement,
   hourlyDeviasi,
+  isPercentAnomaly,
   isRowStale,
+  missingRunningFields,
+  oeeFromWeightedSums,
   operatorAvailability,
   parseShiftLabel,
   pickActiveRow,
+  rejectPpm,
   resolveShiftAndDate,
   shiftWindowFromLabel,
   slotLabel,
   startOfDay,
   stoptimeTotal,
   toWib,
+  weightedOee,
   type BreakdownLine,
   type HourlyPoint,
   type LineDetail,
   type LineStatus,
+  type LineStatusSettings,
   type RangeTrend,
   type RejectItem,
+  type RunningField,
   type ShiftConfig,
   type SummaryTotals,
   type TrendDay,
 } from '@v3/shared';
 import { notFound } from '../../http/errors.js';
 import type { LineRecord, LinesRepository } from '../masterData/linesRepository.js';
+import type { SettingsService } from '../settings/settingsService.js';
 import type { ConmasRepository, DetailRow, LineDayAggregate, ProductSlotValue } from './conmasRepository.js';
 
 export type Clock = () => number;
@@ -55,6 +62,19 @@ export function activeProduct(products: readonly ProductSlotValue[]): ProductSlo
   return null;
 }
 
+/** Field syarat Running yang terisi pada satu report. Angka 0 = terisi; kosong = belum. */
+export function filledRunningFields(row: DetailRow): Set<RunningField> {
+  const filled = new Set<RunningField>();
+  if (row.products.some((p) => p.cl_no !== null)) filled.add('cl_no');
+  if (row.text.line_leader !== null) filled.add('line_leader');
+  if (row.text.cell_leader !== null) filled.add('cell_leader');
+  if (row.text.teknisi !== null) filled.add('teknisi');
+  if (row.text.inspector !== null) filled.add('inspector');
+  if (row.num.output_plan !== null) filled.add('output_plan');
+  if (row.num.output_actual !== null) filled.add('output_actual');
+  return filled;
+}
+
 function nullableStoptime(target: number | null, efektif: number | null): number | null {
   if (target === null && efektif === null) return null;
   return stoptimeTotal(target ?? 0, efektif ?? 0);
@@ -65,6 +85,7 @@ export class ReportingService {
     private readonly conmas: ConmasRepository,
     private readonly lines: LinesRepository,
     private readonly cfg: ShiftConfig,
+    private readonly settings: SettingsService,
     private readonly clock: Clock = Date.now,
   ) {}
 
@@ -98,7 +119,7 @@ export class ReportingService {
     });
   }
 
-  private isStale(row: DetailRow, now: Date): boolean {
+  private isStale(row: DetailRow, now: Date, thresholdMin: number): boolean {
     const parsed = parseShiftLabel(row.shift);
     if (!parsed) return false;
     const window = shiftWindowFromLabel(row.tanggal, parsed.scheme, parsed.shiftNum, this.cfg);
@@ -108,12 +129,39 @@ export class ReportingService {
       reportDate: row.tanggal,
       shiftStartWIB: window.startWIB,
       nowWIB: now,
-      thresholdMin: this.cfg.lineNotRunningThresholdMin,
+      thresholdMin,
       hourlySlotOffset: this.cfg.hourlySlotOffset,
     });
   }
 
-  toLineDetail(row: DetailRow, status: LineStatus, historical: boolean, availableShifts: readonly string[]): LineDetail {
+  /** Satu fungsi status untuk detail line & ringkasan (OQ-011/012). */
+  private liveStatus(
+    row: DetailRow | null,
+    shiftStartWIB: Date,
+    now: Date,
+    rules: LineStatusSettings,
+    applyStale: boolean,
+  ): { status: LineStatus; missing: RunningField[] } {
+    const missing = row ? missingRunningFields(filledRunningFields(row), rules.requiredFields) : [];
+    const status = getLineStatus3({
+      hasRow: row !== null,
+      complete: missing.length === 0,
+      stale: row !== null && applyStale && rules.staleEnabled ? this.isStale(row, now, rules.staleThresholdMin) : false,
+      elapsedMin: elapsedSince(shiftStartWIB, now),
+      graceMin: this.cfg.lineStartGraceMin,
+      historical: false,
+      shiftRequested: false,
+    });
+    return { status, missing };
+  }
+
+  toLineDetail(
+    row: DetailRow,
+    status: LineStatus,
+    historical: boolean,
+    availableShifts: readonly string[],
+    missing: readonly RunningField[],
+  ): LineDetail {
     const n = row.num;
     const product = activeProduct(row.products);
     const plan = n.output_plan;
@@ -133,7 +181,7 @@ export class ReportingService {
       cycle_time_actual: product?.actual ?? null,
       output_plan: plan,
       output_total: actual,
-      deviasi_target: plan !== null && actual !== null ? deviasi(actual, plan) : null,
+      deviasi_target: plan !== null && actual !== null ? deviasi(plan, actual) : null,
       reject_qty: n.reject_m107,
       qty_reject_ppm: n.reject_ppm,
       stoptime_total: nullableStoptime(n.jam_target, n.jam_efektif),
@@ -144,6 +192,7 @@ export class ReportingService {
       stoptime_other: n.stoptime_other,
       availability_operator: operatorAvailability(actual, n.reject_m107, plan),
       hourly: this.buildHourly(row),
+      missing_fields: missing,
       historical,
       available_shifts: availableShifts,
     };
@@ -152,13 +201,16 @@ export class ReportingService {
   /** Detail line: live (hari ini + kemarin) atau historis (?date, ?shift). */
   async lineDetail(input: { line: string; date?: string | undefined; shift?: number | undefined }): Promise<LineDetailResult> {
     const line = await this.requireLine(input.line);
+    const rules = await this.settings.lineStatus();
     if (input.date !== undefined) {
       const rows = await this.conmas.fetchDetailRows([line.line_code], [input.date]);
       const historicalNow = new Date(`${input.date}T23:59:00Z`);
       const picked = pickActiveRow(rows, historicalNow, this.cfg, { exactDate: input.date, shiftOverride: input.shift });
       const shifts = [...new Set(rows.map((r) => r.shift).filter((s): s is string => s !== null))].sort();
+      const missing = picked ? missingRunningFields(filledRunningFields(picked), rules.requiredFields) : [];
       const status = getLineStatus3({
         hasRow: picked !== null,
+        complete: missing.length === 0,
         stale: false,
         elapsedMin: 0,
         graceMin: this.cfg.lineStartGraceMin,
@@ -166,7 +218,7 @@ export class ReportingService {
         shiftRequested: input.shift !== undefined,
       });
       return {
-        data: picked ? this.toLineDetail(picked, status, true, shifts) : null,
+        data: picked ? this.toLineDetail(picked, status, true, shifts, missing) : null,
         line_status: status,
         shift: picked?.shift ?? null,
         tanggal: input.date,
@@ -180,14 +232,7 @@ export class ReportingService {
     const rows = await this.conmas.fetchDetailRows([line.line_code], [yesterday, today]);
     const picked = pickActiveRow(rows, now, this.cfg);
     const resolved = resolveShiftAndDate(now, line.shift_scheme, this.cfg);
-    const status = getLineStatus3({
-      hasRow: picked !== null,
-      stale: picked ? this.isStale(picked, now) : false,
-      elapsedMin: elapsedSince(resolved.shiftStartWIB, now),
-      graceMin: this.cfg.lineStartGraceMin,
-      historical: false,
-      shiftRequested: false,
-    });
+    const { status, missing } = this.liveStatus(picked, resolved.shiftStartWIB, now, rules, true);
     const tanggal = picked?.tanggal ?? resolved.tanggal;
     const shifts = [
       ...new Set(
@@ -198,7 +243,7 @@ export class ReportingService {
       ),
     ].sort();
     return {
-      data: picked ? this.toLineDetail(picked, status, false, shifts) : null,
+      data: picked ? this.toLineDetail(picked, status, false, shifts, missing) : null,
       line_status: status,
       shift: picked?.shift ?? resolved.shift,
       tanggal,
@@ -206,9 +251,12 @@ export class ReportingService {
     };
   }
 
-  /** Ringkasan shift berjalan semua line aktif (getLocalSummary). */
-  async currentShiftSummary(location?: string): Promise<SummaryTotals & { lines: { line: string; status: LineStatus }[] }> {
+  /** Ringkasan shift berjalan semua line aktif. Angka output dijumlah dari semua report shift aktif. */
+  async currentShiftSummary(
+    location?: string,
+  ): Promise<SummaryTotals & { lines: { line: string; status: LineStatus; missing_fields: RunningField[] }[] }> {
     const activeLines = await this.lines.listActive(location);
+    const rules = await this.settings.lineStatus();
     const now = this.nowWib();
     const today = formatIsoDate(now);
     const yesterday = formatIsoDate(addDays(startOfDay(now), -1));
@@ -220,10 +268,12 @@ export class ReportingService {
     let actual = 0;
     let reject = 0;
     let stoptime = 0;
-    const oees: (number | null)[] = [];
-    let running = 0;
-    let notRunning = 0;
-    const perLine: { line: string; status: LineStatus }[] = [];
+    let sogo = 0;
+    let shugyo = 0;
+    let kikai = 0;
+    const oeeItems: { oee: number | null; weight: number | null }[] = [];
+    const counts: Record<LineStatus, number> = { running: 0, waiting: 0, not_running: 0, no_data: 0, shift_not_found: 0 };
+    const perLine: { line: string; status: LineStatus; missing_fields: RunningField[] }[] = [];
     for (const line of activeLines) {
       const resolved = resolveShiftAndDate(now, line.shift_scheme, this.cfg);
       const mine = rows.filter((r) => {
@@ -232,31 +282,38 @@ export class ReportingService {
           r.line === line.line_code && r.tanggal === resolved.tanggal && p?.shiftNum === resolved.shiftNum && p.scheme === line.shift_scheme
         );
       });
-      if (mine.length === 0) {
-        const late = elapsedSince(resolved.shiftStartWIB, now) > this.cfg.lineNotRunningThresholdMin;
-        if (late) notRunning += 1;
-        perLine.push({ line: line.line_code, status: late ? 'not_running' : 'waiting' });
-        continue;
-      }
-      running += 1;
-      perLine.push({ line: line.line_code, status: 'running' });
+      // Bila ada >1 report di shift yang sama, status memakai report yang lengkap (kalau ada).
+      const best = mine.find((r) => missingRunningFields(filledRunningFields(r), rules.requiredFields).length === 0) ?? mine[0] ?? null;
+      const { status, missing } = this.liveStatus(best, resolved.shiftStartWIB, now, rules, rules.staleInSummary);
+      counts[status] += 1;
+      perLine.push({ line: line.line_code, status, missing_fields: missing });
       for (const r of mine) {
         plan += r.num.output_plan ?? 0;
         actual += r.num.output_actual ?? 0;
         reject += r.num.reject_m107 ?? 0;
         stoptime += stoptimeTotal(r.num.jam_target ?? 0, r.num.jam_efektif ?? 0);
-        oees.push(r.num.oee);
+        sogo += r.num.sogo ?? 0;
+        shugyo += r.num.shugyo ?? 0;
+        kikai += r.num.kikai ?? 0;
+        oeeItems.push({ oee: r.num.oee, weight: r.num.jam_target });
       }
     }
+    const oee = weightedOee(oeeItems);
     return {
       lines_total: activeLines.length,
-      lines_running: running,
-      lines_not_running: notRunning,
+      lines_running: counts.running,
+      lines_waiting: counts.waiting,
+      lines_not_running: counts.not_running,
       output_plan: plan,
       output_actual: actual,
       qty_reject: reject,
+      reject_ppm: rejectPpm(reject, actual),
       stoptime_total: stoptime,
-      avg_oee: averageOee(oees),
+      oee: oee.value,
+      oee_anomaly_count: oee.anomalies,
+      sogo,
+      shugyo,
+      kikai,
       lines: perLine,
     };
   }
@@ -275,32 +332,43 @@ export class ReportingService {
   async rangeSummary(start: string, end: string, location?: string): Promise<SummaryTotals & { hasData: boolean }> {
     const { lines, agg } = await this.aggregates(start, end, location);
     const sum = (pick: (a: LineDayAggregate) => number): number => agg.reduce((acc, a) => acc + pick(a), 0);
-    const oeeCount = sum((a) => a.oeeCount);
     const withData = new Set(agg.map((a) => a.line));
     const today = formatIsoDate(this.nowWib());
-    // line_not_running hanya relevan untuk hari ini (LOGIC_SPEC §4)
+    // Line tanpa report hanya relevan untuk hari ini (LOGIC_SPEC §4)
     let notRunning = 0;
+    let waiting = 0;
     if (start === end && start === today) {
       const now = this.nowWib();
       for (const l of lines) {
         if (withData.has(l.line_code)) continue;
         const resolved = resolveShiftAndDate(now, l.shift_scheme, this.cfg);
-        if (elapsedSince(resolved.shiftStartWIB, now) > this.cfg.lineNotRunningThresholdMin) notRunning += 1;
+        if (elapsedSince(resolved.shiftStartWIB, now) > this.cfg.lineStartGraceMin) notRunning += 1;
+        else waiting += 1;
       }
     }
+    const actual = sum((a) => a.actual);
+    const reject = sum((a) => a.rejectM107);
     return {
       lines_total: lines.length,
       lines_running: withData.size,
+      lines_waiting: waiting,
       lines_not_running: notRunning,
       output_plan: sum((a) => a.plan),
-      output_actual: sum((a) => a.actual),
-      qty_reject: sum((a) => a.rejectM107),
+      output_actual: actual,
+      qty_reject: reject,
+      reject_ppm: rejectPpm(reject, actual),
       stoptime_total: stoptimeTotal(
         sum((a) => a.jamTarget),
         sum((a) => a.jamEfektif),
       ),
-      // ⚠️ OQ-004: rata-rata sederhana baris berdata (perilaku lama)
-      avg_oee: oeeCount > 0 ? Math.round((sum((a) => a.oeeSum) / oeeCount) * 10) / 10 : null,
+      oee: oeeFromWeightedSums(
+        sum((a) => a.oeeWeighted),
+        sum((a) => a.oeeWeight),
+      ),
+      oee_anomaly_count: sum((a) => a.oeeAnomaly),
+      sogo: sum((a) => a.sogo),
+      shugyo: sum((a) => a.shugyo),
+      kikai: sum((a) => a.kikai),
       hasData: agg.length > 0,
     };
   }
@@ -356,15 +424,17 @@ export class ReportingService {
       const byDate = new Map(mine.map((a) => [a.date, a]));
       const plan = mine.reduce((acc, a) => acc + a.plan, 0);
       const actual = mine.reduce((acc, a) => acc + a.actual, 0);
+      const reject = mine.reduce((acc, a) => acc + a.rejectM107, 0);
       return {
         line_code: l.line_code,
         product_name: productByLine.get(l.line_code) ?? null,
         tempat: l.location,
         output_plan: plan,
         output_actual: actual,
-        qty_reject: mine.reduce((acc, a) => acc + a.rejectM107, 0),
+        qty_reject: reject,
+        reject_ppm: rejectPpm(reject, actual),
         bekidoritsu: bekidoritsu(actual, plan),
-        deviasi: breakdownDeviasi(plan, actual),
+        deviasi: deviasi(plan, actual),
         days: dates.map((date) => {
           const a = byDate.get(date);
           return { date, plan: a?.plan ?? 0, actual: a?.actual ?? 0, hasData: date <= today && a !== undefined && a.rowCount > 0 };
@@ -374,7 +444,7 @@ export class ReportingService {
     return { dates, lines: out };
   }
 
-  /** Detail reject: agregasi 150 slot (nama defect + qty), urut terbesar. Slot kosong difilter. */
+  /** Detail reject: agregasi 150 slot (nama defect + qty M107), urut terbesar. Slot kosong difilter. */
   async rejectDetail(start: string, end: string, opts: { line?: string; location?: string } = {}): Promise<RejectItem[]> {
     const lineCodes = opts.line
       ? [(await this.requireLine(opts.line)).line_code]
@@ -422,6 +492,7 @@ export class ReportingService {
     );
     return rows.map((r, i) => {
       const p = parseShiftLabel(r.shift);
+      const pct = [r.num.oee, r.num.availability, r.num.performance, r.num.quality];
       return {
         row: i + 1,
         line: r.line,
@@ -430,23 +501,21 @@ export class ReportingService {
         shiftLabel: r.shift,
         actual: r.num.output_actual,
         plan: r.num.output_plan,
-        // ⚠️ OQ-005: skala persen (0.95 vs 95) belum divalidasi — nilai mentah apa adanya.
+        // OQ-005: skala 0–100 (terverifikasi dari DB). Nilai di luar 0–100 ditandai anomali, tidak di-clamp.
         availability: r.num.availability,
         performance: r.num.performance,
         quality: r.num.quality,
         oee: r.num.oee,
-        // Urutan kategori mengikuti mockup: Machine, Man, Material, Method, Other
+        anomaly: pct.some((v) => isPercentAnomaly(v)),
+        // Urutan kategori mengikuti mockup: Machine, Man, Material, Method, Other (menit)
         categories: [r.num.stoptime_machine, r.num.stoptime_man, r.num.stoptime_material, r.num.stoptime_method, r.num.stoptime_other],
         change: r.num.change_point,
         reject_m107: r.num.reject_m107,
+        reject_ppm: r.num.reject_ppm,
+        sogo: r.num.sogo,
+        shugyo: r.num.shugyo,
+        kikai: r.num.kikai,
         items: r.products.filter((x) => x.cl_no).map((x) => [x.product_name, x.cl_no, x.mo_no, x.qty] as const),
-        unvalidated: {
-          sogo: r.num.sogo,
-          shugyo: r.num.shugyo,
-          kikai: r.num.kikai,
-          reject_p027: r.num.reject_p027,
-          reject_p028: r.num.reject_p028,
-        },
       };
     });
   }
