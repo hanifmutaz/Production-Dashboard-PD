@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+config/reportColumns.js
+*.log
+playwright-report/
+test-results/

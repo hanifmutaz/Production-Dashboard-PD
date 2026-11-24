@@ -1,0 +1,1036 @@
+no	column_name	data_type	label	status
+1	rep_top_id	integer		DB
+2	rep_top_name	text		DB
+3	public_status	numeric		DB
+4	edit_refer_status	numeric		DB
+5	rep_top_org	integer		DB
+6	rev_no	integer		DB
+7	def_top_id	integer		DB
+8	report_type	numeric		DB
+9	rep_sheet_count	integer		DB
+10	display_sheet_number	text		DB
+11	server_version	text		DB
+12	top_remarks1	text		DB
+13	top_remarks2	text		DB
+14	top_remarks3	text		DB
+15	top_remarks4	text		DB
+16	top_remarks5	text		DB
+17	top_remarks6	text		DB
+18	top_remarks7	text		DB
+19	top_remarks8	text		DB
+20	top_remarks9	text		DB
+21	top_remarks10	text		DB
+22	deleted	numeric	(system) flag deleted	DB
+23	sys_regist_term	text		DB
+24	sys_regist_user	text		DB
+25	sys_regist_time	timestamp without time zone		DB
+26	sys_update_term	text		DB
+27	sys_update_user	text		DB
+28	sys_update_time	timestamp without time zone		DB
+29	cluster_1_1_t	text	PRODUCTION	DB
+30	cluster_1_7_t	text	CL NO. 1	DB
+31	cluster_1_8_t	text	PRODUCT NAME 1	DB
+32	cluster_1_9_t	text	MO NO 1	DB
+33	cluster_1_10_n	numeric	QTY 1	DB
+34	cluster_1_12_n	numeric	CYCLE TIME SWI 1	DB
+35	cluster_1_13_n	numeric	CYCLE TIME CONV. 1	DB
+36	cluster_1_17_t	text	LINE NO./BELT Result	DB
+37	cluster_1_20_t	text	CL NO. 2	DB
+38	cluster_1_21_t	text	PRODUCT NAME 2	DB
+39	cluster_1_22_t	text	MO NO 2	DB
+40	cluster_1_23_n	numeric	QTY 2	DB
+41	cluster_1_25_n	numeric	CYCLE TIME SWI 2	DB
+42	cluster_1_26_n	numeric	CYCLE TIME CONV. 2	DB
+43	cluster_1_30_t	text	CELL LEADER	DB
+44	cluster_1_31_t	text	OTHERS	DB
+45	cluster_1_33_t	text	CL NO. 3	DB
+46	cluster_1_34_t	text	PRODUCT NAME 3	DB
+47	cluster_1_35_t	text	MO NO 3	DB
+48	cluster_1_36_n	numeric	QTY 3	DB
+49	cluster_1_38_n	numeric	CYCLE TIME SWI 3	DB
+50	cluster_1_39_n	numeric	CYCLE TIME CONV. 3	DB
+51	cluster_1_43_t	text	TEKNISI	DB
+52	cluster_1_44_d	timestamp without time zone	DATE	DB
+53	cluster_1_45_t	text	CL NO. 4	DB
+54	cluster_1_46_t	text	PRODUCT NAME 4	DB
+55	cluster_1_47_t	text	MO NO 4	DB
+56	cluster_1_48_n	numeric	QTY 4	DB
+57	cluster_1_50_n	numeric	CYCLE TIME SWI 4	DB
+58	cluster_1_51_n	numeric	CYCLE TIME CONV. 4	DB
+59	cluster_1_55_t	text	INSPECTOR	DB
+60	cluster_1_56_t	text	GROUP	DB
+61	cluster_1_57_t	text	CL NO. 5	DB
+62	cluster_1_58_t	text	PRODUCT NAME 5	DB
+63	cluster_1_59_t	text	MO NO 5	DB
+64	cluster_1_60_n	numeric	QTY 5	DB
+65	cluster_1_62_n	numeric	CYCLE TIME SWI 5	DB
+66	cluster_1_63_n	numeric	CYCLE TIME CONV. 5	DB
+67	cluster_1_67_t	text	LINE LEADER	DB
+68	cluster_1_68_t	text	SHIFT	DB
+69	cluster_1_69_t	text	CL NO. 6	DB
+70	cluster_1_70_t	text	PRODUCT NAME 6	DB
+71	cluster_1_71_t	text	MO NO 6	DB
+72	cluster_1_72_n	numeric	QTY 6	DB
+73	cluster_1_74_n	numeric	CYCLE TIME SWI 6	DB
+74	cluster_1_75_n	numeric	CYCLE TIME CONV. 6	DB
+75	cluster_1_85_n	numeric	OEE	DB
+76	cluster_1_92_n	numeric	Avilibility	DB
+77	cluster_1_99_n	numeric	Performance	DB
+78	cluster_1_106_n	numeric	Quality	DB
+79	cluster_1_113_n	numeric	REJECT PPM	DB
+80	cluster_1_151_n	numeric	Output Plan 1	DB
+81	cluster_1_152_n	numeric	Output Actual 1	DB
+82	cluster_1_158_t	text	Kategori 1	DB
+83	cluster_1_161_t	text	Masalah 1	DB
+84	cluster_1_165_n	numeric	Qty Reject M107 1	DB
+85	cluster_1_166_t	text	Nama Reject 1	DB
+86	cluster_1_167_n	numeric	Minute 1	DB
+87	cluster_1_177_t	text	Kategori 2	DB
+88	cluster_1_180_t	text	Masalah 2	DB
+89	cluster_1_184_n	numeric	Qty Reject M107 2	DB
+90	cluster_1_185_t	text	Nama Reject 2	DB
+91	cluster_1_186_n	numeric	Minute 2	DB
+92	cluster_1_193_t	text	Kategori 3	DB
+93	cluster_1_196_t	text	Masalah 3	DB
+94	cluster_1_200_n	numeric	Qty Reject M107 3	DB
+95	cluster_1_201_t	text	Nama Reject 3	DB
+96	cluster_1_202_n	numeric	Minute 3	DB
+97	cluster_1_209_t	text	Kategori 4	DB
+98	cluster_1_212_t	text	Masalah 4	DB
+99	cluster_1_216_n	numeric	Qty Reject M107 4	DB
+100	cluster_1_217_t	text	Nama Reject 4	DB
+101	cluster_1_218_n	numeric	Minute 4	DB
+102	cluster_1_225_t	text	Kategori 5	DB
+103	cluster_1_228_t	text	Masalah 5	DB
+104	cluster_1_232_n	numeric	Qty Reject M107 5	DB
+105	cluster_1_233_t	text	Nama Reject 5	DB
+106	cluster_1_234_n	numeric	Minute 5	DB
+107	cluster_1_241_t	text	Kategori 6	DB
+108	cluster_1_244_t	text	Masalah 6	DB
+109	cluster_1_248_n	numeric	Qty Reject M107 6	DB
+110	cluster_1_249_t	text	Nama Reject 6	DB
+111	cluster_1_250_n	numeric	Minute 6	DB
+112	cluster_1_256_n	numeric	Output Plan 2	DB
+113	cluster_1_257_n	numeric	Output Actual 2	DB
+114	cluster_1_263_t	text	Kategori 7	DB
+115	cluster_1_266_t	text	Masalah 7	DB
+116	cluster_1_270_n	numeric	Qty Reject M107 7	DB
+117	cluster_1_271_t	text	Nama Reject 7	DB
+118	cluster_1_272_n	numeric	Minute 7	DB
+119	cluster_1_282_t	text	Kategori 8	DB
+120	cluster_1_285_t	text	Masalah 8	DB
+121	cluster_1_289_n	numeric	Qty Reject M107 8	DB
+122	cluster_1_290_t	text	Nama Reject 8	DB
+123	cluster_1_291_n	numeric	Minute 8	DB
+124	cluster_1_298_t	text	Kategori 9	DB
+125	cluster_1_301_t	text	Masalah 9	DB
+126	cluster_1_305_n	numeric	Qty Reject M107 9	DB
+127	cluster_1_306_t	text	Nama Reject 9	DB
+128	cluster_1_307_n	numeric	Minute 9	DB
+129	cluster_1_314_t	text	Kategori 10	DB
+130	cluster_1_317_t	text	Masalah 10	DB
+131	cluster_1_321_n	numeric	Qty Reject M107 10	DB
+132	cluster_1_322_t	text	Nama Reject 10	DB
+133	cluster_1_323_n	numeric	Minute 10	DB
+134	cluster_1_330_t	text	Kategori 11	DB
+135	cluster_1_333_t	text	Masalah 11	DB
+136	cluster_1_337_n	numeric	Qty Reject M107 11	DB
+137	cluster_1_338_t	text	Nama Reject 11	DB
+138	cluster_1_339_n	numeric	Minute 11	DB
+139	cluster_1_346_t	text	Kategori 12	DB
+140	cluster_1_349_t	text	Masalah 12	DB
+141	cluster_1_353_n	numeric	Qty Reject M107 12	DB
+142	cluster_1_354_t	text	Nama Reject 12	DB
+143	cluster_1_355_n	numeric	Minute 12	DB
+144	cluster_1_361_n	numeric	Output Plan 3	DB
+145	cluster_1_362_n	numeric	Output Actual 3	DB
+146	cluster_1_368_t	text	Kategori 13	DB
+147	cluster_1_371_t	text	Masalah 13	DB
+148	cluster_1_375_n	numeric	Qty Reject M107 13	DB
+149	cluster_1_376_t	text	Nama Reject 13	DB
+150	cluster_1_377_n	numeric	Minute 13	DB
+151	cluster_1_387_t	text	Kategori 14	DB
+152	cluster_1_390_t	text	Masalah 14	DB
+153	cluster_1_394_n	numeric	Qty Reject M107 14	DB
+154	cluster_1_395_t	text	Nama Reject 14	DB
+155	cluster_1_396_n	numeric	Minute 14	DB
+156	cluster_1_403_t	text	Kategori 15	DB
+157	cluster_1_406_t	text	Masalah 15	DB
+158	cluster_1_410_n	numeric	Qty Reject M107 15	DB
+159	cluster_1_411_t	text	Nama Reject 15	DB
+160	cluster_1_412_n	numeric	Minute 15	DB
+161	cluster_1_419_t	text	Kategori 16	DB
+162	cluster_1_422_t	text	Masalah 16	DB
+163	cluster_1_426_n	numeric	Qty Reject M107 16	DB
+164	cluster_1_427_t	text	Nama Reject 16	DB
+165	cluster_1_428_n	numeric	Minute 16	DB
+166	cluster_1_435_t	text	Kategori 17	DB
+167	cluster_1_438_t	text	Masalah 17	DB
+168	cluster_1_442_n	numeric	Qty Reject M107 17	DB
+169	cluster_1_443_t	text	Nama Reject 17	DB
+170	cluster_1_444_n	numeric	Minute 17	DB
+171	cluster_1_451_t	text	Kategori 18	DB
+172	cluster_1_454_t	text	Masalah 18	DB
+173	cluster_1_458_n	numeric	Qty Reject M107 18	DB
+174	cluster_1_459_t	text	Nama Reject 18	DB
+175	cluster_1_460_n	numeric	Minute 18	DB
+176	cluster_1_466_n	numeric	Output Plan 4	DB
+177	cluster_1_467_n	numeric	Output Actual 4	DB
+178	cluster_1_473_t	text	Kategori 19	DB
+179	cluster_1_476_t	text	Masalah 19	DB
+180	cluster_1_480_n	numeric	Qty Reject M107 19	DB
+181	cluster_1_481_t	text	Nama Reject 19	DB
+182	cluster_1_482_n	numeric	Minute 19	DB
+183	cluster_1_492_t	text	Kategori 20	DB
+184	cluster_1_495_t	text	Masalah 20	DB
+185	cluster_1_499_n	numeric	Qty Reject M107 20	DB
+186	cluster_1_500_t	text	Nama Reject 20	DB
+187	cluster_1_501_n	numeric	Minute 20	DB
+188	cluster_1_508_t	text	Kategori 21	DB
+189	cluster_1_511_t	text	Masalah 21	DB
+190	cluster_1_515_n	numeric	Qty Reject M107 21	DB
+191	cluster_1_516_t	text	Nama Reject 21	DB
+192	cluster_1_517_n	numeric	Minute 21	DB
+193	cluster_1_524_t	text	Kategori 22	DB
+194	cluster_1_527_t	text	Masalah 22	DB
+195	cluster_1_531_n	numeric	Qty Reject M107 22	DB
+196	cluster_1_532_t	text	Nama Reject 22	DB
+197	cluster_1_533_n	numeric	Minute 22	DB
+198	cluster_1_540_t	text	Kategori 23	DB
+199	cluster_1_543_t	text	Masalah 23	DB
+200	cluster_1_547_n	numeric	Qty Reject M107 23	DB
+201	cluster_1_548_t	text	Nama Reject 23	DB
+202	cluster_1_549_n	numeric	Minute 23	DB
+203	cluster_1_556_t	text	Kategori 24	DB
+204	cluster_1_559_t	text	Masalah 24	DB
+205	cluster_1_563_n	numeric	Qty Reject M107 24	DB
+206	cluster_1_564_t	text	Nama Reject 24	DB
+207	cluster_1_565_n	numeric	Minute 24	DB
+208	cluster_1_571_n	numeric	Output Plan 5	DB
+209	cluster_1_572_n	numeric	Output Actual 5	DB
+210	cluster_1_578_t	text	Kategori 25	DB
+211	cluster_1_581_t	text	Masalah 25	DB
+212	cluster_1_585_n	numeric	Qty Reject M107 25	DB
+213	cluster_1_586_t	text	Nama Reject 25	DB
+214	cluster_1_587_n	numeric	Minute 25	DB
+215	cluster_1_597_t	text	Kategori 26	DB
+216	cluster_1_600_t	text	Masalah 26	DB
+217	cluster_1_604_n	numeric	Qty Reject M107 26	DB
+218	cluster_1_605_t	text	Nama Reject 26	DB
+219	cluster_1_606_n	numeric	Minute 26	DB
+220	cluster_1_613_t	text	Kategori 27	DB
+221	cluster_1_616_t	text	Masalah 27	DB
+222	cluster_1_620_n	numeric	Qty Reject M107 27	DB
+223	cluster_1_621_t	text	Nama Reject 27	DB
+224	cluster_1_622_n	numeric	Minute 27	DB
+225	cluster_1_629_t	text	Kategori 28	DB
+226	cluster_1_632_t	text	Masalah 28	DB
+227	cluster_1_636_n	numeric	Qty Reject M107 28	DB
+228	cluster_1_637_t	text	Nama Reject 28	DB
+229	cluster_1_638_n	numeric	Minute 28	DB
+230	cluster_1_645_t	text	Kategori 29	DB
+231	cluster_1_648_t	text	Masalah 29	DB
+232	cluster_1_652_n	numeric	Qty Reject M107 29	DB
+233	cluster_1_653_t	text	Nama Reject 29	DB
+234	cluster_1_654_n	numeric	Minute 29	DB
+235	cluster_1_661_t	text	Kategori 30	DB
+236	cluster_1_664_t	text	Masalah 30	DB
+237	cluster_1_668_n	numeric	Qty Reject M107 30	DB
+238	cluster_1_669_t	text	Nama Reject 30	DB
+239	cluster_1_670_n	numeric	Minute 30	DB
+240	cluster_1_676_n	numeric	Output Plan 6	DB
+241	cluster_1_677_n	numeric	Output Actual 6	DB
+242	cluster_1_683_t	text	Kategori 31	DB
+243	cluster_1_686_t	text	Masalah 31	DB
+244	cluster_1_690_n	numeric	Qty Reject M107 31	DB
+245	cluster_1_691_t	text	Nama Reject 31	DB
+246	cluster_1_692_n	numeric	Minute 31	DB
+247	cluster_1_702_t	text	Kategori 32	DB
+248	cluster_1_705_t	text	Masalah 32	DB
+249	cluster_1_709_n	numeric	Qty Reject M107 32	DB
+250	cluster_1_710_t	text	Nama Reject 32	DB
+251	cluster_1_711_n	numeric	Minute 32	DB
+252	cluster_1_718_t	text	Kategori 33	DB
+253	cluster_1_721_t	text	Masalah 33	DB
+254	cluster_1_725_n	numeric	Qty Reject M107 33	DB
+255	cluster_1_726_t	text	Nama Reject 33	DB
+256	cluster_1_727_n	numeric	Minute 33	DB
+257	cluster_1_734_t	text	Kategori 34	DB
+258	cluster_1_737_t	text	Masalah 34	DB
+259	cluster_1_741_n	numeric	Qty Reject M107 34	DB
+260	cluster_1_742_t	text	Nama Reject 34	DB
+261	cluster_1_743_n	numeric	Minute 34	DB
+262	cluster_1_750_t	text	Kategori 35	DB
+263	cluster_1_753_t	text	Masalah 35	DB
+264	cluster_1_757_n	numeric	Qty Reject M107 35	DB
+265	cluster_1_758_t	text	Nama Reject 35	DB
+266	cluster_1_759_n	numeric	Minute 35	DB
+267	cluster_1_766_t	text	Kategori 36	DB
+268	cluster_1_769_t	text	Masalah 36	DB
+269	cluster_1_773_n	numeric	Qty Reject M107 36	DB
+270	cluster_1_774_t	text	Nama Reject 36	DB
+271	cluster_1_775_n	numeric	Minute 36	DB
+272	cluster_1_781_n	numeric	Output Plan 7	DB
+273	cluster_1_782_n	numeric	Output Actual 7	DB
+274	cluster_1_788_t	text	Kategori 37	DB
+275	cluster_1_791_t	text	Masalah 37	DB
+276	cluster_1_795_n	numeric	Qty Reject M107 37	DB
+277	cluster_1_796_t	text	Nama Reject 37	DB
+278	cluster_1_797_n	numeric	Minute 37	DB
+279	cluster_1_807_t	text	Kategori 38	DB
+280	cluster_1_810_t	text	Masalah 38	DB
+281	cluster_1_814_n	numeric	Qty Reject M107 38	DB
+282	cluster_1_815_t	text	Nama Reject 38	DB
+283	cluster_1_816_n	numeric	Minute 38	DB
+284	cluster_1_823_t	text	Kategori 39	DB
+285	cluster_1_826_t	text	Masalah 39	DB
+286	cluster_1_830_n	numeric	Qty Reject M107 39	DB
+287	cluster_1_831_t	text	Nama Reject 39	DB
+288	cluster_1_832_n	numeric	Minute 39	DB
+289	cluster_1_839_t	text	Kategori 40	DB
+290	cluster_1_842_t	text	Masalah 40	DB
+291	cluster_1_846_n	numeric	Qty Reject M107 40	DB
+292	cluster_1_847_t	text	Nama Reject 40	DB
+293	cluster_1_848_n	numeric	Minute 40	DB
+294	cluster_1_855_t	text	Kategori 41	DB
+295	cluster_1_858_t	text	Masalah 41	DB
+296	cluster_1_862_n	numeric	Qty Reject M107 41	DB
+297	cluster_1_863_t	text	Nama Reject 41	DB
+298	cluster_1_864_n	numeric	Minute 41	DB
+299	cluster_1_871_t	text	Kategori 42	DB
+300	cluster_1_874_t	text	Masalah 42	DB
+301	cluster_1_878_n	numeric	Qty Reject M107 42	DB
+302	cluster_1_879_t	text	Nama Reject 42	DB
+303	cluster_1_880_n	numeric	Minute 42	DB
+304	cluster_1_886_n	numeric	Output Plan 8	DB
+305	cluster_1_887_n	numeric	Output Actual 8	DB
+306	cluster_1_893_t	text	Kategori 43	DB
+307	cluster_1_896_t	text	Masalah 43	DB
+308	cluster_1_900_n	numeric	Qty Reject M107 43	DB
+309	cluster_1_901_t	text	Nama Reject 43	DB
+310	cluster_1_902_n	numeric	Minute 43	DB
+311	cluster_1_912_t	text	Kategori 44	DB
+312	cluster_1_915_t	text	Masalah 44	DB
+313	cluster_1_919_n	numeric	Qty Reject M107 44	DB
+314	cluster_1_920_t	text	Nama Reject 44	DB
+315	cluster_1_921_n	numeric	Minute 44	DB
+316	cluster_1_928_t	text	Kategori 45	DB
+317	cluster_1_931_t	text	Masalah 45	DB
+318	cluster_1_935_n	numeric	Qty Reject M107 45	DB
+319	cluster_1_936_t	text	Nama Reject 45	DB
+320	cluster_1_937_n	numeric	Minute 45	DB
+321	cluster_1_944_t	text	Kategori 46	DB
+322	cluster_1_947_t	text	Masalah 46	DB
+323	cluster_1_951_n	numeric	Qty Reject M107 46	DB
+324	cluster_1_952_t	text	Nama Reject 46	DB
+325	cluster_1_953_n	numeric	Minute 46	DB
+326	cluster_1_960_t	text	Kategori 47	DB
+327	cluster_1_963_t	text	Masalah 47	DB
+328	cluster_1_967_n	numeric	Qty Reject M107 47	DB
+329	cluster_1_968_t	text	Nama Reject 47	DB
+330	cluster_1_969_n	numeric	Minute 47	DB
+331	cluster_1_976_t	text	Kategori 48	DB
+332	cluster_1_979_t	text	Masalah 48	DB
+333	cluster_1_983_n	numeric	Qty Reject M107 48	DB
+334	cluster_1_984_t	text	Nama Reject 48	DB
+335	cluster_1_985_n	numeric	Minute 48	DB
+336	cluster_1_991_n	numeric	Output Plan 9	DB
+337	cluster_1_992_n	numeric	Output Actual 9	DB
+338	cluster_1_998_t	text	Kategori 49	DB
+339	cluster_1_1001_t	text	Masalah 49	DB
+340	cluster_1_1005_n	numeric	Qty Reject M107 49	DB
+341	cluster_1_1006_t	text	Nama Reject 49	DB
+342	cluster_1_1007_n	numeric	Minute 49	DB
+343	cluster_1_1017_t	text	Kategori 50	DB
+344	cluster_1_1020_t	text	Masalah 50	DB
+345	cluster_1_1024_n	numeric	Qty Reject M107 50	DB
+346	cluster_1_1025_t	text	Nama Reject 50	DB
+347	cluster_1_1026_n	numeric	Minute 50	DB
+348	cluster_1_1033_t	text	Kategori 51	DB
+349	cluster_1_1036_t	text	Masalah 51	DB
+350	cluster_1_1040_n	numeric	Qty Reject M107 51	DB
+351	cluster_1_1041_t	text	Nama Reject 51	DB
+352	cluster_1_1042_n	numeric	Minute 51	DB
+353	cluster_1_1049_t	text	Kategori 52	DB
+354	cluster_1_1052_t	text	Masalah 52	DB
+355	cluster_1_1056_n	numeric	Qty Reject M107 52	DB
+356	cluster_1_1057_t	text	Nama Reject 52	DB
+357	cluster_1_1058_n	numeric	Minute 52	DB
+358	cluster_1_1065_t	text	Kategori 53	DB
+359	cluster_1_1068_t	text	Masalah 53	DB
+360	cluster_1_1072_n	numeric	Qty Reject M107 53	DB
+361	cluster_1_1073_t	text	Nama Reject 53	DB
+362	cluster_1_1074_n	numeric	Minute 53	DB
+363	cluster_1_1081_t	text	Kategori 54	DB
+364	cluster_1_1084_t	text	Masalah 54	DB
+365	cluster_1_1088_n	numeric	Qty Reject M107 54	DB
+366	cluster_1_1089_t	text	Nama Reject 54	DB
+367	cluster_1_1090_n	numeric	Minute 54	DB
+368	cluster_1_1096_n	numeric	Output Plan 10	DB
+369	cluster_1_1097_n	numeric	Output Actual 10	DB
+370	cluster_1_1103_t	text	Kategori 55	DB
+371	cluster_1_1106_t	text	Masalah 55	DB
+372	cluster_1_1110_n	numeric	Qty Reject M107 55	DB
+373	cluster_1_1111_t	text	Nama Reject 55	DB
+374	cluster_1_1112_n	numeric	Minute 55	DB
+375	cluster_1_1122_t	text	Kategori 56	DB
+376	cluster_1_1125_t	text	Masalah 56	DB
+377	cluster_1_1129_n	numeric	Qty Reject M107 56	DB
+378	cluster_1_1130_t	text	Nama Reject 56	DB
+379	cluster_1_1131_n	numeric	Minute 56	DB
+380	cluster_1_1138_t	text	Kategori 57	DB
+381	cluster_1_1141_t	text	Masalah 57	DB
+382	cluster_1_1145_n	numeric	Qty Reject M107 57	DB
+383	cluster_1_1146_t	text	Nama Reject 57	DB
+384	cluster_1_1147_n	numeric	Minute 57	DB
+385	cluster_1_1154_t	text	Kategori 58	DB
+386	cluster_1_1157_t	text	Masalah 58	DB
+387	cluster_1_1161_n	numeric	Qty Reject M107 58	DB
+388	cluster_1_1162_t	text	Nama Reject 58	DB
+389	cluster_1_1163_n	numeric	Minute 58	DB
+390	cluster_1_1170_t	text	Kategori 59	DB
+391	cluster_1_1173_t	text	Masalah 59	DB
+392	cluster_1_1177_n	numeric	Qty Reject M107 59	DB
+393	cluster_1_1178_t	text	Nama Reject 59	DB
+394	cluster_1_1179_n	numeric	Minute 59	DB
+395	cluster_1_1186_t	text	Kategori 60	DB
+396	cluster_1_1189_t	text	Masalah 60	DB
+397	cluster_1_1193_n	numeric	Qty Reject M107 60	DB
+398	cluster_1_1194_t	text	Nama Reject 60	DB
+399	cluster_1_1195_n	numeric	Minute 60	DB
+400	cluster_1_1201_n	numeric	Output Plan 11	DB
+401	cluster_1_1202_n	numeric	Output Actual 11	DB
+402	cluster_1_1208_t	text	Kategori 61	DB
+403	cluster_1_1211_t	text	Masalah 61	DB
+404	cluster_1_1215_n	numeric	Qty Reject M107 61	DB
+405	cluster_1_1216_t	text	Nama Reject 61	DB
+406	cluster_1_1217_n	numeric	Minute 61	DB
+407	cluster_1_1227_t	text	Kategori 62	DB
+408	cluster_1_1230_t	text	Masalah 62	DB
+409	cluster_1_1234_n	numeric	Qty Reject M107 62	DB
+410	cluster_1_1235_t	text	Nama Reject 62	DB
+411	cluster_1_1236_n	numeric	Minute 62	DB
+412	cluster_1_1243_t	text	Kategori 63	DB
+413	cluster_1_1246_t	text	Masalah 63	DB
+414	cluster_1_1250_n	numeric	Qty Reject M107 63	DB
+415	cluster_1_1251_t	text	Nama Reject 63	DB
+416	cluster_1_1252_n	numeric	Minute 63	DB
+417	cluster_1_1259_t	text	Kategori 64	DB
+418	cluster_1_1262_t	text	Masalah 64	DB
+419	cluster_1_1266_n	numeric	Qty Reject M107 64	DB
+420	cluster_1_1267_t	text	Nama Reject 64	DB
+421	cluster_1_1268_n	numeric	Minute 64	DB
+422	cluster_1_1275_t	text	Kategori 65	DB
+423	cluster_1_1278_t	text	Masalah 65	DB
+424	cluster_1_1282_n	numeric	Qty Reject M107 65	DB
+425	cluster_1_1283_t	text	Nama Reject 65	DB
+426	cluster_1_1284_n	numeric	Minute 65	DB
+427	cluster_1_1291_t	text	Kategori 66	DB
+428	cluster_1_1294_t	text	Masalah 66	DB
+429	cluster_1_1298_n	numeric	Qty Reject M107 66	DB
+430	cluster_1_1299_t	text	Nama Reject 66	DB
+431	cluster_1_1300_n	numeric	Minute 66	DB
+432	cluster_1_1306_n	numeric	Output Plan 12	DB
+433	cluster_1_1307_n	numeric	Output Actual 12	DB
+434	cluster_1_1313_t	text	Kategori 67	DB
+435	cluster_1_1316_t	text	Masalah 67	DB
+436	cluster_1_1320_n	numeric	Qty Reject M107 67	DB
+437	cluster_1_1321_t	text	Nama Reject 67	DB
+438	cluster_1_1322_n	numeric	Minute 67	DB
+439	cluster_1_1332_t	text	Kategori 68	DB
+440	cluster_1_1335_t	text	Masalah 68	DB
+441	cluster_1_1339_n	numeric	Qty Reject M107 68	DB
+442	cluster_1_1340_t	text	Nama Reject 68	DB
+443	cluster_1_1341_n	numeric	Minute 68	DB
+444	cluster_1_1348_t	text	Kategori 69	DB
+445	cluster_1_1351_t	text	Masalah 69	DB
+446	cluster_1_1355_n	numeric	Qty Reject M107 69	DB
+447	cluster_1_1356_t	text	Nama Reject 69	DB
+448	cluster_1_1357_n	numeric	Minute 69	DB
+449	cluster_1_1364_t	text	Kategori 70	DB
+450	cluster_1_1367_t	text	Masalah 70	BELUM ADA DI DB - cek setting ConMas
+451	cluster_1_1371_n	numeric	Qty Reject M107 70	DB
+452	cluster_1_1372_t	text	Nama Reject 70	DB
+453	cluster_1_1373_n	numeric	Minute 70	DB
+454	cluster_1_1380_t	text	Kategori 71	DB
+455	cluster_1_1383_t	text	Masalah 71	DB
+456	cluster_1_1387_n	numeric	Qty Reject M107 71	DB
+457	cluster_1_1388_t	text	Nama Reject 71	DB
+458	cluster_1_1389_n	numeric	Minute 71	DB
+459	cluster_1_1396_t	text	Kategori 72	DB
+460	cluster_1_1399_t	text	Masalah 72	DB
+461	cluster_1_1403_n	numeric	Qty Reject M107 72	DB
+462	cluster_1_1404_t	text	Nama Reject 72	DB
+463	cluster_1_1405_n	numeric	Minute 72	DB
+464	cluster_1_1411_n	numeric	Output Plan 13	DB
+465	cluster_1_1412_n	numeric	Output Actual 13	DB
+466	cluster_1_1418_t	text	Kategori 73	DB
+467	cluster_1_1421_t	text	Masalah 73	DB
+468	cluster_1_1425_n	numeric	Qty Reject M107 73	DB
+469	cluster_1_1426_t	text	Nama Reject 73	DB
+470	cluster_1_1427_n	numeric	Minute 73	DB
+471	cluster_1_1437_t	text	Kategori 74	DB
+472	cluster_1_1440_t	text	Masalah 74	DB
+473	cluster_1_1444_n	numeric	Qty Reject M107 74	DB
+474	cluster_1_1445_t	text	Nama Reject 74	DB
+475	cluster_1_1446_n	numeric	Minute 74	DB
+476	cluster_1_1453_t	text	Kategori 75	DB
+477	cluster_1_1456_t	text	Masalah 75	DB
+478	cluster_1_1460_n	numeric	Qty Reject M107 75	DB
+479	cluster_1_1461_t	text	Nama Reject 75	DB
+480	cluster_1_1462_n	numeric	Minute 75	DB
+481	cluster_1_1469_t	text	Kategori 76	DB
+482	cluster_1_1472_t	text	Masalah 76	DB
+483	cluster_1_1476_n	numeric	Qty Reject M107 76	DB
+484	cluster_1_1477_t	text	Nama Reject 76	DB
+485	cluster_1_1478_n	numeric	Minute 76	DB
+486	cluster_1_1485_t	text	Kategori 77	DB
+487	cluster_1_1488_t	text	Masalah 77	DB
+488	cluster_1_1492_n	numeric	Qty Reject M107 77	DB
+489	cluster_1_1493_t	text	Nama Reject 77	DB
+490	cluster_1_1494_n	numeric	Minute 77	DB
+491	cluster_1_1501_t	text	Kategori 78	DB
+492	cluster_1_1504_t	text	Masalah 78	DB
+493	cluster_1_1508_n	numeric	Qty Reject M107 78	DB
+494	cluster_1_1509_t	text	Nama Reject 78	DB
+495	cluster_1_1510_n	numeric	Minute 78	DB
+496	cluster_1_1516_n	numeric	Output Plan 14	DB
+497	cluster_1_1517_n	numeric	Output Actual 14	DB
+498	cluster_1_1523_t	text	Kategori 79	DB
+499	cluster_1_1526_t	text	Masalah 79	DB
+500	cluster_1_1530_n	numeric	Qty Reject M107 79	DB
+501	cluster_1_1531_t	text	Nama Reject 79	DB
+502	cluster_1_1532_n	numeric	Minute 79	DB
+503	cluster_1_1542_t	text	Kategori 80	DB
+504	cluster_1_1545_t	text	Masalah 80	DB
+505	cluster_1_1549_n	numeric	Qty Reject M107 80	DB
+506	cluster_1_1550_t	text	Nama Reject 80	DB
+507	cluster_1_1551_n	numeric	Minute 80	DB
+508	cluster_1_1558_t	text	Kategori 81	DB
+509	cluster_1_1561_t	text	Masalah 81	DB
+510	cluster_1_1565_n	numeric	Qty Reject M107 81	DB
+511	cluster_1_1566_t	text	Nama Reject 81	DB
+512	cluster_1_1567_n	numeric	Minute 81	DB
+513	cluster_1_1574_t	text	Kategori 82	DB
+514	cluster_1_1577_t	text	Masalah 82	DB
+515	cluster_1_1581_n	numeric	Qty Reject M107 82	DB
+516	cluster_1_1582_t	text	Nama Reject 82	DB
+517	cluster_1_1583_n	numeric	Minute 82	DB
+518	cluster_1_1590_t	text	Kategori 83	DB
+519	cluster_1_1593_t	text	Masalah 83	DB
+520	cluster_1_1597_n	numeric	Qty Reject M107 83	DB
+521	cluster_1_1598_t	text	Nama Reject 83	DB
+522	cluster_1_1599_n	numeric	Minute 83	DB
+523	cluster_1_1606_t	text	Kategori 84	DB
+524	cluster_1_1609_t	text	Masalah 84	DB
+525	cluster_1_1613_n	numeric	Qty Reject M107 84	DB
+526	cluster_1_1614_t	text	Nama Reject 84	DB
+527	cluster_1_1615_n	numeric	Minute 84	DB
+528	cluster_1_1621_n	numeric	Output Plan 15	DB
+529	cluster_1_1622_n	numeric	Output Actual 15	DB
+530	cluster_1_1628_t	text	Kategori 85	DB
+531	cluster_1_1631_t	text	Masalah 85	DB
+532	cluster_1_1635_n	numeric	Qty Reject M107 85	DB
+533	cluster_1_1636_t	text	Nama Reject 85	DB
+534	cluster_1_1637_n	numeric	Minute 85	DB
+535	cluster_1_1647_t	text	Kategori 86	DB
+536	cluster_1_1650_t	text	Masalah 86	BELUM ADA DI DB - cek setting ConMas
+537	cluster_1_1654_n	numeric	Qty Reject M107 86	DB
+538	cluster_1_1655_t	text	Nama Reject 86	DB
+539	cluster_1_1656_n	numeric	Minute 86	DB
+540	cluster_1_1663_t	text	Kategori 87	DB
+541	cluster_1_1666_t	text	Masalah 87	DB
+542	cluster_1_1670_n	numeric	Qty Reject M107 87	DB
+543	cluster_1_1671_t	text	Nama Reject 87	DB
+544	cluster_1_1672_n	numeric	Minute 87	DB
+545	cluster_1_1679_t	text	Kategori 88	DB
+546	cluster_1_1682_t	text	Masalah 88	DB
+547	cluster_1_1686_n	numeric	Qty Reject M107 88	DB
+548	cluster_1_1687_t	text	Nama Reject 88	DB
+549	cluster_1_1688_n	numeric	Minute 88	DB
+550	cluster_1_1695_t	text	Kategori 89	DB
+551	cluster_1_1698_t	text	Masalah 89	DB
+552	cluster_1_1702_n	numeric	Qty Reject M107 89	DB
+553	cluster_1_1703_t	text	Nama Reject 89	DB
+554	cluster_1_1704_n	numeric	Minute 89	DB
+555	cluster_1_1711_t	text	Kategori 90	DB
+556	cluster_1_1714_t	text	Masalah 90	DB
+557	cluster_1_1718_n	numeric	Qty Reject M107 90	DB
+558	cluster_1_1719_t	text	Nama Reject 90	DB
+559	cluster_1_1720_n	numeric	Minute 90	DB
+560	cluster_1_1726_n	numeric	Output Plan 16	DB
+561	cluster_1_1727_n	numeric	Output Actual 16	DB
+562	cluster_1_1733_t	text	Kategori 91	DB
+563	cluster_1_1736_t	text	Masalah 91	DB
+564	cluster_1_1740_n	numeric	Qty Reject M107 91	DB
+565	cluster_1_1741_t	text	Nama Reject 91	DB
+566	cluster_1_1742_n	numeric	Minute 91	DB
+567	cluster_1_1752_t	text	Kategori 92	DB
+568	cluster_1_1755_t	text	Masalah 92	DB
+569	cluster_1_1759_n	numeric	Qty Reject M107 92	DB
+570	cluster_1_1760_t	text	Nama Reject 92	DB
+571	cluster_1_1761_n	numeric	Minute 92	DB
+572	cluster_1_1768_t	text	Kategori 93	DB
+573	cluster_1_1771_t	text	Masalah 93	DB
+574	cluster_1_1775_n	numeric	Qty Reject M107 93	DB
+575	cluster_1_1776_t	text	Nama Reject 93	DB
+576	cluster_1_1777_n	numeric	Minute 93	DB
+577	cluster_1_1784_t	text	Kategori 94	DB
+578	cluster_1_1787_t	text	Masalah 94	DB
+579	cluster_1_1791_n	numeric	Qty Reject M107 94	DB
+580	cluster_1_1792_t	text	Nama Reject 94	DB
+581	cluster_1_1793_n	numeric	Minute 94	DB
+582	cluster_1_1800_t	text	Kategori 95	DB
+583	cluster_1_1803_t	text	Masalah 95	DB
+584	cluster_1_1807_n	numeric	Qty Reject M107 95	DB
+585	cluster_1_1808_t	text	Nama Reject 95	DB
+586	cluster_1_1809_n	numeric	Minute 95	DB
+587	cluster_1_1816_t	text	Kategori 96	DB
+588	cluster_1_1819_t	text	Masalah 96	DB
+589	cluster_1_1823_n	numeric	Qty Reject M107 96	DB
+590	cluster_1_1824_t	text	Nama Reject 96	DB
+591	cluster_1_1825_n	numeric	Minute 96	DB
+592	cluster_1_1831_n	numeric	Output Plan 17	DB
+593	cluster_1_1832_n	numeric	Output Actual 17	DB
+594	cluster_1_1838_t	text	Kategori 97	DB
+595	cluster_1_1841_t	text	Masalah 97	DB
+596	cluster_1_1845_n	numeric	Qty Reject M107 97	DB
+597	cluster_1_1846_t	text	Nama Reject 97	DB
+598	cluster_1_1847_n	numeric	Minute 97	DB
+599	cluster_1_1857_t	text	Kategori 98	DB
+600	cluster_1_1860_t	text	Masalah 98	DB
+601	cluster_1_1864_n	numeric	Qty Reject M107 98	DB
+602	cluster_1_1865_t	text	Nama Reject 98	DB
+603	cluster_1_1866_n	numeric	Minute 98	DB
+604	cluster_1_1873_t	text	Kategori 99	DB
+605	cluster_1_1876_t	text	Masalah 99	DB
+606	cluster_1_1880_n	numeric	Qty Reject M107 99	DB
+607	cluster_1_1881_t	text	Nama Reject 99	DB
+608	cluster_1_1882_n	numeric	Minute 99	DB
+609	cluster_1_1889_t	text	Kategori 100	DB
+610	cluster_1_1892_t	text	Masalah 100	DB
+611	cluster_1_1896_n	numeric	Qty Reject M107 100	DB
+612	cluster_1_1897_t	text	Nama Reject 100	DB
+613	cluster_1_1898_n	numeric	Minute 100	DB
+614	cluster_1_1905_t	text	Kategori 101	DB
+615	cluster_1_1908_t	text	Masalah 101	DB
+616	cluster_1_1912_n	numeric	Qty Reject M107 101	DB
+617	cluster_1_1913_t	text	Nama Reject 101	DB
+618	cluster_1_1914_n	numeric	Minute 101	DB
+619	cluster_1_1921_t	text	Kategori 102	DB
+620	cluster_1_1924_t	text	Masalah 102	DB
+621	cluster_1_1928_n	numeric	Qty Reject M107 102	DB
+622	cluster_1_1929_t	text	Nama Reject 102	DB
+623	cluster_1_1930_n	numeric	Minute 102	DB
+624	cluster_1_1936_n	numeric	Output Plan 18	DB
+625	cluster_1_1937_n	numeric	Output Actual 18	DB
+626	cluster_1_1943_t	text	Kategori 103	DB
+627	cluster_1_1946_t	text	Masalah 103	DB
+628	cluster_1_1950_n	numeric	Qty Reject M107 103	DB
+629	cluster_1_1951_t	text	Nama Reject 103	DB
+630	cluster_1_1952_n	numeric	Minute 103	DB
+631	cluster_1_1962_t	text	Kategori 104	DB
+632	cluster_1_1965_t	text	Masalah 104	DB
+633	cluster_1_1969_n	numeric	Qty Reject M107 104	DB
+634	cluster_1_1970_t	text	Nama Reject 104	DB
+635	cluster_1_1971_n	numeric	Minute 104	DB
+636	cluster_1_1978_t	text	Kategori 105	DB
+637	cluster_1_1981_t	text	Masalah 105	DB
+638	cluster_1_1985_n	numeric	Qty Reject M107 105	DB
+639	cluster_1_1986_t	text	Nama Reject 105	DB
+640	cluster_1_1987_n	numeric	Minute 105	DB
+641	cluster_1_1994_t	text	Kategori 106	DB
+642	cluster_1_1997_t	text	Masalah 106	DB
+643	cluster_1_2001_n	numeric	Qty Reject M107 106	DB
+644	cluster_1_2002_t	text	Nama Reject 106	DB
+645	cluster_1_2003_n	numeric	Minute 106	DB
+646	cluster_1_2010_t	text	Kategori 107	DB
+647	cluster_1_2013_t	text	Masalah 107	DB
+648	cluster_1_2017_n	numeric	Qty Reject M107 107	DB
+649	cluster_1_2018_t	text	Nama Reject 107	DB
+650	cluster_1_2019_n	numeric	Minute 107	DB
+651	cluster_1_2026_t	text	Kategori 108	DB
+652	cluster_1_2029_t	text	Masalah 108	DB
+653	cluster_1_2033_n	numeric	Qty Reject M107 108	DB
+654	cluster_1_2034_t	text	Nama Reject 108	DB
+655	cluster_1_2035_n	numeric	Minute 108	DB
+656	cluster_1_2041_n	numeric	Output Plan 19	DB
+657	cluster_1_2042_n	numeric	Output Actual 19	DB
+658	cluster_1_2048_t	text	Kategori 109	DB
+659	cluster_1_2051_t	text	Masalah 109	DB
+660	cluster_1_2055_n	numeric	Qty Reject M107 109	DB
+661	cluster_1_2056_t	text	Nama Reject 109	DB
+662	cluster_1_2057_n	numeric	Minute 109	DB
+663	cluster_1_2067_t	text	Kategori 110	DB
+664	cluster_1_2070_t	text	Masalah 110	DB
+665	cluster_1_2074_n	numeric	Qty Reject M107 110	DB
+666	cluster_1_2075_t	text	Nama Reject 110	DB
+667	cluster_1_2076_n	numeric	Minute 110	DB
+668	cluster_1_2083_t	text	Kategori 111	DB
+669	cluster_1_2086_t	text	Masalah 111	DB
+670	cluster_1_2090_n	numeric	Qty Reject M107 111	DB
+671	cluster_1_2091_t	text	Nama Reject 111	DB
+672	cluster_1_2092_n	numeric	Minute 111	DB
+673	cluster_1_2099_t	text	Kategori 112	DB
+674	cluster_1_2102_t	text	Masalah 112	DB
+675	cluster_1_2106_n	numeric	Qty Reject M107 112	DB
+676	cluster_1_2107_t	text	Nama Reject 112	DB
+677	cluster_1_2108_n	numeric	Minute 112	DB
+678	cluster_1_2115_t	text	Kategori 113	DB
+679	cluster_1_2118_t	text	Masalah 113	DB
+680	cluster_1_2122_n	numeric	Qty Reject M107 113	DB
+681	cluster_1_2123_t	text	Nama Reject 113	DB
+682	cluster_1_2124_n	numeric	Minute 113	DB
+683	cluster_1_2131_t	text	Kategori 114	DB
+684	cluster_1_2134_t	text	Masalah 114	DB
+685	cluster_1_2138_n	numeric	Qty Reject M107 114	DB
+686	cluster_1_2139_t	text	Nama Reject 114	DB
+687	cluster_1_2140_n	numeric	Minute 114	DB
+688	cluster_1_2146_n	numeric	Output Plan 20	DB
+689	cluster_1_2147_n	numeric	Output Actual 20	DB
+690	cluster_1_2153_t	text	Kategori 115	DB
+691	cluster_1_2156_t	text	Masalah 115	DB
+692	cluster_1_2160_n	numeric	Qty Reject M107 115	DB
+693	cluster_1_2161_t	text	Nama Reject 115	DB
+694	cluster_1_2162_n	numeric	Minute 115	DB
+695	cluster_1_2172_t	text	Kategori 116	DB
+696	cluster_1_2175_t	text	Masalah 116	DB
+697	cluster_1_2179_n	numeric	Qty Reject M107 116	DB
+698	cluster_1_2180_t	text	Nama Reject 116	DB
+699	cluster_1_2181_n	numeric	Minute 116	DB
+700	cluster_1_2188_t	text	Kategori 117	DB
+701	cluster_1_2191_t	text	Masalah 117	DB
+702	cluster_1_2195_n	numeric	Qty Reject M107 117	DB
+703	cluster_1_2196_t	text	Nama Reject 117	DB
+704	cluster_1_2197_n	numeric	Minute 117	DB
+705	cluster_1_2204_t	text	Kategori 118	DB
+706	cluster_1_2207_t	text	Masalah 118	DB
+707	cluster_1_2211_n	numeric	Qty Reject M107 118	DB
+708	cluster_1_2212_t	text	Nama Reject 118	DB
+709	cluster_1_2213_n	numeric	Minute 118	DB
+710	cluster_1_2220_t	text	Kategori 119	DB
+711	cluster_1_2223_t	text	Masalah 119	DB
+712	cluster_1_2227_n	numeric	Qty Reject M107 119	DB
+713	cluster_1_2228_t	text	Nama Reject 119	DB
+714	cluster_1_2229_n	numeric	Minute 119	DB
+715	cluster_1_2236_t	text	Kategori 120	DB
+716	cluster_1_2239_t	text	Masalah 120	DB
+717	cluster_1_2243_n	numeric	Qty Reject M107 120	DB
+718	cluster_1_2244_t	text	Nama Reject 120	DB
+719	cluster_1_2245_n	numeric	Minute 120	DB
+720	cluster_1_2251_n	numeric	Output Plan 21	DB
+721	cluster_1_2252_n	numeric	Output Actual 21	DB
+722	cluster_1_2258_t	text	Kategori 121	DB
+723	cluster_1_2261_t	text	Masalah 121	DB
+724	cluster_1_2265_n	numeric	Qty Reject M107 121	DB
+725	cluster_1_2266_t	text	Nama Reject 121	DB
+726	cluster_1_2267_n	numeric	Minute 121	DB
+727	cluster_1_2277_t	text	Kategori 122	DB
+728	cluster_1_2280_t	text	Masalah 122	DB
+729	cluster_1_2284_n	numeric	Qty Reject M107 122	DB
+730	cluster_1_2285_t	text	Nama Reject 122	DB
+731	cluster_1_2286_n	numeric	Minute 122	DB
+732	cluster_1_2293_t	text	Kategori 123	DB
+733	cluster_1_2296_t	text	Masalah 123	DB
+734	cluster_1_2300_n	numeric	Qty Reject M107 123	DB
+735	cluster_1_2301_t	text	Nama Reject 123	DB
+736	cluster_1_2302_n	numeric	Minute 123	DB
+737	cluster_1_2309_t	text	Kategori 124	DB
+738	cluster_1_2312_t	text	Masalah 124	DB
+739	cluster_1_2316_n	numeric	Qty Reject M107 124	DB
+740	cluster_1_2317_t	text	Nama Reject 124	DB
+741	cluster_1_2318_n	numeric	Minute 124	DB
+742	cluster_1_2325_t	text	Kategori 125	DB
+743	cluster_1_2328_t	text	Masalah 125	DB
+744	cluster_1_2332_n	numeric	Qty Reject M107 125	DB
+745	cluster_1_2333_t	text	Nama Reject 125	DB
+746	cluster_1_2334_n	numeric	Minute 125	DB
+747	cluster_1_2341_t	text	Kategori 126	DB
+748	cluster_1_2344_t	text	Masalah 126	DB
+749	cluster_1_2348_n	numeric	Qty Reject M107 126	DB
+750	cluster_1_2349_t	text	Nama Reject 126	DB
+751	cluster_1_2350_n	numeric	Minute 126	DB
+752	cluster_1_2356_n	numeric	Output Plan 22	DB
+753	cluster_1_2357_n	numeric	Output Actual 22	DB
+754	cluster_1_2363_t	text	Kategori 127	DB
+755	cluster_1_2366_t	text	Masalah 127	DB
+756	cluster_1_2370_n	numeric	Qty Reject M107 127	DB
+757	cluster_1_2371_t	text	Nama Reject 127	DB
+758	cluster_1_2372_n	numeric	Minute 127	DB
+759	cluster_1_2382_t	text	Kategori 128	DB
+760	cluster_1_2385_t	text	Masalah 128	DB
+761	cluster_1_2389_n	numeric	Qty Reject M107 128	DB
+762	cluster_1_2390_t	text	Nama Reject 128	DB
+763	cluster_1_2391_n	numeric	Minute 128	DB
+764	cluster_1_2398_t	text	Kategori 129	DB
+765	cluster_1_2401_t	text	Masalah 129	DB
+766	cluster_1_2405_n	numeric	Qty Reject M107 129	DB
+767	cluster_1_2406_t	text	Nama Reject 129	DB
+768	cluster_1_2407_n	numeric	Minute 129	DB
+769	cluster_1_2414_t	text	Kategori 130	DB
+770	cluster_1_2417_t	text	Masalah 130	DB
+771	cluster_1_2421_n	numeric	Qty Reject M107 130	DB
+772	cluster_1_2422_t	text	Nama Reject 130	DB
+773	cluster_1_2423_n	numeric	Minute 130	DB
+774	cluster_1_2430_t	text	Kategori 131	DB
+775	cluster_1_2433_t	text	Masalah 131	DB
+776	cluster_1_2437_n	numeric	Qty Reject M107 131	DB
+777	cluster_1_2438_t	text	Nama Reject 131	DB
+778	cluster_1_2439_n	numeric	Minute 131	DB
+779	cluster_1_2446_t	text	Kategori 132	DB
+780	cluster_1_2449_t	text	Masalah 132	DB
+781	cluster_1_2453_n	numeric	Qty Reject M107 132	DB
+782	cluster_1_2454_t	text	Nama Reject 132	DB
+783	cluster_1_2455_n	numeric	Minute 132	DB
+784	cluster_1_2461_n	numeric	Output Plan 23	DB
+785	cluster_1_2462_n	numeric	Output Actual 23	DB
+786	cluster_1_2468_t	text	Kategori 133	DB
+787	cluster_1_2471_t	text	Masalah 133	DB
+788	cluster_1_2475_n	numeric	Qty Reject M107 133	DB
+789	cluster_1_2476_t	text	Nama Reject 133	DB
+790	cluster_1_2477_n	numeric	Minute 133	DB
+791	cluster_1_2487_t	text	Kategori 134	DB
+792	cluster_1_2490_t	text	Masalah 134	DB
+793	cluster_1_2494_n	numeric	Qty Reject M107 134	DB
+794	cluster_1_2495_t	text	Nama Reject 134	DB
+795	cluster_1_2496_n	numeric	Minute 134	DB
+796	cluster_1_2503_t	text	Kategori 135	DB
+797	cluster_1_2506_t	text	Masalah 135	DB
+798	cluster_1_2510_n	numeric	Qty Reject M107 135	DB
+799	cluster_1_2511_t	text	Nama Reject 135	DB
+800	cluster_1_2512_n	numeric	Minute 135	DB
+801	cluster_1_2519_t	text	Kategori 136	DB
+802	cluster_1_2522_t	text	Masalah 136	DB
+803	cluster_1_2526_n	numeric	Qty Reject M107 136	DB
+804	cluster_1_2527_t	text	Nama Reject 136	DB
+805	cluster_1_2528_n	numeric	Minute 136	DB
+806	cluster_1_2535_t	text	Kategori 137	DB
+807	cluster_1_2538_t	text	Masalah 137	DB
+808	cluster_1_2542_n	numeric	Qty Reject M107 137	DB
+809	cluster_1_2543_t	text	Nama Reject 137	DB
+810	cluster_1_2544_n	numeric	Minute 137	DB
+811	cluster_1_2551_t	text	Kategori 138	DB
+812	cluster_1_2554_t	text	Masalah 138	DB
+813	cluster_1_2558_n	numeric	Qty Reject M107 138	DB
+814	cluster_1_2559_t	text	Nama Reject 138	DB
+815	cluster_1_2560_n	numeric	Minute 138	DB
+816	cluster_1_2566_n	numeric	Output Plan 24	DB
+817	cluster_1_2567_n	numeric	Output Actual 24	DB
+818	cluster_1_2573_t	text	Kategori 139	DB
+819	cluster_1_2576_t	text	Masalah 139	DB
+820	cluster_1_2580_n	numeric	Qty Reject M107 139	DB
+821	cluster_1_2581_t	text	Nama Reject 139	DB
+822	cluster_1_2582_n	numeric	Minute 139	DB
+823	cluster_1_2592_t	text	Kategori 140	DB
+824	cluster_1_2595_t	text	Masalah 140	DB
+825	cluster_1_2599_n	numeric	Qty Reject M107 140	DB
+826	cluster_1_2600_t	text	Nama Reject 140	DB
+827	cluster_1_2601_n	numeric	Minute 140	DB
+828	cluster_1_2608_t	text	Kategori 141	DB
+829	cluster_1_2611_t	text	Masalah 141	DB
+830	cluster_1_2615_n	numeric	Qty Reject M107 141	DB
+831	cluster_1_2616_t	text	Nama Reject 141	DB
+832	cluster_1_2617_n	numeric	Minute 141	DB
+833	cluster_1_2624_t	text	Kategori 142	DB
+834	cluster_1_2627_t	text	Masalah 142	DB
+835	cluster_1_2631_n	numeric	Qty Reject M107 142	DB
+836	cluster_1_2632_t	text	Nama Reject 142	DB
+837	cluster_1_2633_n	numeric	Minute 142	DB
+838	cluster_1_2640_t	text	Kategori 143	DB
+839	cluster_1_2643_t	text	Masalah 143	DB
+840	cluster_1_2647_n	numeric	Qty Reject M107 143	DB
+841	cluster_1_2648_t	text	Nama Reject 143	DB
+842	cluster_1_2649_n	numeric	Minute 143	DB
+843	cluster_1_2656_t	text	Kategori 144	DB
+844	cluster_1_2659_t	text	Masalah 144	DB
+845	cluster_1_2663_n	numeric	Qty Reject M107 144	DB
+846	cluster_1_2664_t	text	Nama Reject 144	DB
+847	cluster_1_2665_n	numeric	Minute 144	DB
+848	cluster_1_2671_n	numeric	Output Plan 25	DB
+849	cluster_1_2672_n	numeric	Output Actual 25	DB
+850	cluster_1_2678_t	text	Kategori 145	DB
+851	cluster_1_2681_t	text	Masalah 145	DB
+852	cluster_1_2685_n	numeric	Qty Reject M107 145	DB
+853	cluster_1_2686_t	text	Nama Reject 145	DB
+854	cluster_1_2687_n	numeric	Minute 145	DB
+855	cluster_1_2697_t	text	Kategori 146	DB
+856	cluster_1_2700_t	text	Masalah 146	DB
+857	cluster_1_2704_n	numeric	Qty Reject M107 146	DB
+858	cluster_1_2705_t	text	Nama Reject 146	DB
+859	cluster_1_2706_n	numeric	Minute 146	DB
+860	cluster_1_2713_t	text	Kategori 147	DB
+861	cluster_1_2716_t	text	Masalah 147	DB
+862	cluster_1_2720_n	numeric	Qty Reject M107 147	DB
+863	cluster_1_2721_t	text	Nama Reject 147	DB
+864	cluster_1_2722_n	numeric	Minute 147	DB
+865	cluster_1_2729_t	text	Kategori 148	DB
+866	cluster_1_2732_t	text	Masalah 148	DB
+867	cluster_1_2736_n	numeric	Qty Reject M107 148	DB
+868	cluster_1_2737_t	text	Nama Reject 148	DB
+869	cluster_1_2738_n	numeric	Minute 148	DB
+870	cluster_1_2745_t	text	Kategori 149	DB
+871	cluster_1_2748_t	text	Masalah 149	DB
+872	cluster_1_2752_n	numeric	Qty Reject M107 149	DB
+873	cluster_1_2753_t	text	Nama Reject 149	DB
+874	cluster_1_2754_n	numeric	Minute 149	DB
+875	cluster_1_2761_t	text	Kategori 150	DB
+876	cluster_1_2764_t	text	Masalah 150	DB
+877	cluster_1_2768_n	numeric	Qty Reject M107 150	DB
+878	cluster_1_2769_t	text	Nama Reject 150	DB
+879	cluster_1_2770_n	numeric	Minute 150	DB
+880	cluster_1_2775_n	numeric	CL NO. 1	DB
+881	cluster_1_2776_n	numeric	PRODUCT NAME 1	DB
+882	cluster_1_2777_n	numeric	MO NO 7	DB
+883	cluster_1_2778_n	numeric	Jumlah Opt 1	DB
+884	cluster_1_2779_n	numeric	CT SWI 1	DB
+885	cluster_1_2780_n	numeric	CT Conv 1	DB
+886	cluster_1_2781_n	numeric	QTY 7	DB
+887	cluster_1_2782_n	numeric	QTY MO SISA 1	DB
+888	cluster_1_2783_n	numeric	Total OUTPUT PLAN 1	DB
+889	cluster_1_2784_n	numeric	TOTAL OUTPUT ACTUAL 1	DB
+890	cluster_1_2785_n	numeric	REJECT ACTUAL F027 1	DB
+891	cluster_1_2786_n	numeric	REJECT ACTUAL F028 1	DB
+892	cluster_1_2787_n	numeric	REJECT ACTUAL M107 1	DB
+893	cluster_1_2788_n	numeric	JAM TARGET 1	DB
+894	cluster_1_2789_n	numeric	JAM EFEKTIF 1	DB
+895	cluster_1_2790_n	numeric	AVAILABILITY LOSS 1	DB
+896	cluster_1_2791_n	numeric	PERFORMANCE LOSS 1	DB
+897	cluster_1_2792_n	numeric	QUALITY LOSS 1	DB
+898	cluster_1_2793_n	numeric	NOT OEE 1	DB
+899	cluster_1_2794_n	numeric	SOGO 1	DB
+900	cluster_1_2795_n	numeric	SHUGYO 1	DB
+901	cluster_1_2796_n	numeric	KIKAI 1	DB
+902	cluster_1_2797_n	numeric	MAN	DB
+903	cluster_1_2798_n	numeric	CL NO. 2	DB
+904	cluster_1_2799_n	numeric	PRODUCT NAME 2	DB
+905	cluster_1_2800_n	numeric	MO NO 8	DB
+906	cluster_1_2801_n	numeric	Jumlah Opt 2	DB
+907	cluster_1_2802_n	numeric	CT SWI 2	DB
+908	cluster_1_2803_n	numeric	CT Conv 2	DB
+909	cluster_1_2804_n	numeric	QTY 8	DB
+910	cluster_1_2805_n	numeric	QTY MO SISA 2	DB
+911	cluster_1_2806_n	numeric	Total OUTPUT PLAN 2	DB
+912	cluster_1_2807_n	numeric	TOTAL OUTPUT ACTUAL 2	DB
+913	cluster_1_2808_n	numeric	REJECT ACTUAL F027 2	DB
+914	cluster_1_2809_n	numeric	REJECT ACTUAL F028 2	DB
+915	cluster_1_2810_n	numeric	REJECT ACTUAL M107 2	DB
+916	cluster_1_2811_n	numeric	JAM TARGET 2	DB
+917	cluster_1_2812_n	numeric	JAM EFEKTIF 2	DB
+918	cluster_1_2813_n	numeric	AVAILABILITY LOSS 2	DB
+919	cluster_1_2814_n	numeric	PERFORMANCE LOSS 2	DB
+920	cluster_1_2815_n	numeric	QUALITY LOSS 2	DB
+921	cluster_1_2816_n	numeric	NOT OEE 2	DB
+922	cluster_1_2817_n	numeric	SOGO 2	DB
+923	cluster_1_2818_n	numeric	SHUGYO 2	DB
+924	cluster_1_2819_n	numeric	KIKAI 2	DB
+925	cluster_1_2820_n	numeric	METHOD	DB
+926	cluster_1_2821_n	numeric	CL NO. 3	DB
+927	cluster_1_2822_n	numeric	PRODUCT NAME 3	DB
+928	cluster_1_2823_n	numeric	MO NO 9	DB
+929	cluster_1_2824_n	numeric	Jumlah Opt 3	DB
+930	cluster_1_2825_n	numeric	CT SWI 3	DB
+931	cluster_1_2826_n	numeric	CT Conv 3	DB
+932	cluster_1_2827_n	numeric	QTY 9	DB
+933	cluster_1_2828_n	numeric	QTY MO SISA 3	DB
+934	cluster_1_2829_n	numeric	Total OUTPUT PLAN 3	DB
+935	cluster_1_2830_n	numeric	TOTAL OUTPUT ACTUAL 3	DB
+936	cluster_1_2831_n	numeric	REJECT ACTUAL F027 3	DB
+937	cluster_1_2832_n	numeric	REJECT ACTUAL F028 3	DB
+938	cluster_1_2833_n	numeric	REJECT ACTUAL M107 3	DB
+939	cluster_1_2834_n	numeric	JAM TARGET 3	DB
+940	cluster_1_2835_n	numeric	JAM EFEKTIF 3	DB
+941	cluster_1_2836_n	numeric	AVAILABILITY LOSS 3	DB
+942	cluster_1_2837_n	numeric	PERFORMANCE LOSS 3	DB
+943	cluster_1_2838_n	numeric	QUALITY LOSS 3	DB
+944	cluster_1_2839_n	numeric	NOT OEE 3	DB
+945	cluster_1_2840_n	numeric	SOGO 3	DB
+946	cluster_1_2841_n	numeric	SHUGYO 3	DB
+947	cluster_1_2842_n	numeric	KIKAI 3	DB
+948	cluster_1_2843_n	numeric	MATERIAL	DB
+949	cluster_1_2844_n	numeric	CL NO. 4	DB
+950	cluster_1_2845_n	numeric	PRODUCT NAME 4	DB
+951	cluster_1_2846_n	numeric	MO NO 10	DB
+952	cluster_1_2847_n	numeric	Jumlah Opt 4	DB
+953	cluster_1_2848_n	numeric	CT SWI 4	DB
+954	cluster_1_2849_n	numeric	CT Conv 4	DB
+955	cluster_1_2850_n	numeric	QTY 10	DB
+956	cluster_1_2851_n	numeric	QTY MO SISA 4	DB
+957	cluster_1_2852_n	numeric	Total OUTPUT PLAN 4	DB
+958	cluster_1_2853_n	numeric	TOTAL OUTPUT ACTUAL 4	DB
+959	cluster_1_2854_n	numeric	REJECT ACTUAL F027 4	DB
+960	cluster_1_2855_n	numeric	REJECT ACTUAL F028 4	DB
+961	cluster_1_2856_n	numeric	REJECT ACTUAL M107 4	DB
+962	cluster_1_2857_n	numeric	JAM TARGET 4	DB
+963	cluster_1_2858_n	numeric	JAM EFEKTIF 4	DB
+964	cluster_1_2859_n	numeric	AVAILABILITY LOSS 4	DB
+965	cluster_1_2860_n	numeric	PERFORMANCE LOSS 4	DB
+966	cluster_1_2861_n	numeric	QUALITY LOSS 4	DB
+967	cluster_1_2862_n	numeric	NOT OEE 4	DB
+968	cluster_1_2863_n	numeric	SOGO 4	DB
+969	cluster_1_2864_n	numeric	SHUGYO 4	DB
+970	cluster_1_2865_n	numeric	KIKAI 4	DB
+971	cluster_1_2866_n	numeric	MACHINE	DB
+972	cluster_1_2867_n	numeric	CL NO. 5	DB
+973	cluster_1_2868_n	numeric	PRODUCT NAME 5	DB
+974	cluster_1_2869_n	numeric	MO NO 11	DB
+975	cluster_1_2870_n	numeric	Jumlah Opt 5	DB
+976	cluster_1_2871_n	numeric	CT SWI 5	DB
+977	cluster_1_2872_n	numeric	CT Conv 5	DB
+978	cluster_1_2873_n	numeric	QTY 11	DB
+979	cluster_1_2874_n	numeric	QTY MO SISA 5	DB
+980	cluster_1_2875_n	numeric	Total OUTPUT PLAN 5	DB
+981	cluster_1_2876_n	numeric	TOTAL OUTPUT ACTUAL 5	DB
+982	cluster_1_2877_n	numeric	REJECT ACTUAL F027 5	DB
+983	cluster_1_2878_n	numeric	REJECT ACTUAL F028 5	DB
+984	cluster_1_2879_n	numeric	REJECT ACTUAL M107 5	DB
+985	cluster_1_2880_n	numeric	JAM TARGET 5	DB
+986	cluster_1_2881_n	numeric	JAM EFEKTIF 5	DB
+987	cluster_1_2882_n	numeric	AVAILABILITY LOSS 5	DB
+988	cluster_1_2883_n	numeric	PERFORMANCE LOSS 5	DB
+989	cluster_1_2884_n	numeric	QUALITY LOSS 5	DB
+990	cluster_1_2885_n	numeric	NOT OEE 5	DB
+991	cluster_1_2886_n	numeric	SOGO 5	DB
+992	cluster_1_2887_n	numeric	SHUGYO 5	DB
+993	cluster_1_2888_n	numeric	KIKAI 5	DB
+994	cluster_1_2889_n	numeric	OTHER	DB
+995	cluster_1_2890_n	numeric	CL NO. 6	DB
+996	cluster_1_2891_n	numeric	PRODUCT NAME 6	DB
+997	cluster_1_2892_n	numeric	MO NO 12	DB
+998	cluster_1_2893_n	numeric	Jumlah Opt 6	DB
+999	cluster_1_2894_n	numeric	CT SWI 6	DB
+1000	cluster_1_2895_n	numeric	CT Conv 6	DB
+1001	cluster_1_2896_n	numeric	QTY 12	DB
+1002	cluster_1_2897_n	numeric	QTY MO SISA 6	DB
+1003	cluster_1_2898_n	numeric	Total OUTPUT PLAN 6	DB
+1004	cluster_1_2899_n	numeric	TOTAL OUTPUT ACTUAL 6	DB
+1005	cluster_1_2900_n	numeric	REJECT ACTUAL F027 6	DB
+1006	cluster_1_2901_n	numeric	REJECT ACTUAL F028 6	DB
+1007	cluster_1_2902_n	numeric	REJECT ACTUAL M107 6	DB
+1008	cluster_1_2903_n	numeric	JAM TARGET 6	DB
+1009	cluster_1_2904_n	numeric	JAM EFEKTIF 6	DB
+1010	cluster_1_2905_n	numeric	AVAILABILITY LOSS 6	DB
+1011	cluster_1_2906_n	numeric	PERFORMANCE LOSS 6	DB
+1012	cluster_1_2907_n	numeric	QUALITY LOSS 6	DB
+1013	cluster_1_2908_n	numeric	NOT OEE 6	DB
+1014	cluster_1_2909_n	numeric	SOGO 6	DB
+1015	cluster_1_2910_n	numeric	SHUGYO 6	DB
+1016	cluster_1_2911_n	numeric	KIKAI 6	DB
+1017	cluster_1_2912_n	numeric	Change Point	DB
+1018	cluster_1_2913_n	numeric	TOTAL Ouput Plan	DB
+1019	cluster_1_2914_n	numeric	TOTAL Ouput Actual	DB
+1020	cluster_1_2915_n	numeric	TOTAL Reject P027	DB
+1021	cluster_1_2916_n	numeric	TOTAL Reject P028	DB
+1022	cluster_1_2917_n	numeric	TOTAL Reject M107	DB
+1023	cluster_1_2918_n	numeric	TOTAL Jam Target	DB
+1024	cluster_1_2919_n	numeric	TOTAL JAM EFEKTIF	DB
+1025	cluster_1_2920_n	numeric	AVAILABILITY LOSS Total	DB
+1026	cluster_1_2921_n	numeric	PERFORMANCE LOSS Total	DB
+1027	cluster_1_2922_n	numeric	QUALITY LOSS Total	DB
+1028	cluster_1_2923_n	numeric	NOT OEE Total	DB
+1029	cluster_1_2924_n	numeric	SOGO TOTAL	DB
+1030	cluster_1_2925_n	numeric	SHUGYO TOTAL	DB
+1031	cluster_1_2926_n	numeric	KIKAI TOTAL	DB
+1032	cluster_1_2928_d	timestamp without time zone	Total SN Error 1	DB
+1033	cluster_1_2928_n	numeric	Total SN Error 2	DB
+1034	cluster_1_2929_d	timestamp without time zone	Total SN Jumping 1	DB
+1035	cluster_1_2929_n	numeric	Total SN Jumping 2	DB
