@@ -21,7 +21,7 @@ export function Login() {
     setBusy(true);
     setError('');
     try {
-      await login(String(f.get('username') ?? ''), String(f.get('password') ?? ''));
+      await login(String(f.get('email') ?? ''), String(f.get('password') ?? ''));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Login gagal. Coba lagi.');
     } finally {
@@ -83,8 +83,8 @@ export function Login() {
           </header>
           <form id="demo-login-form" className="login-form" onSubmit={(e) => void submit(e)}>
             <label className="fld">
-              Username
-              <input name="username" required autoComplete="username" maxLength={60} />
+              Email
+              <input name="email" type="email" required autoComplete="username" autoCapitalize="none" maxLength={254} />
             </label>
             <label className="fld">
               Password

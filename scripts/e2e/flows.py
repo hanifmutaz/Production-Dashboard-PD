@@ -20,7 +20,7 @@ def check(name, fn):
 
 def login(pg, user='admin', pw='admin12345'):
     pg.goto(BASE)
-    pg.fill('input[name=username]', user)
+    pg.fill('input[name=email]', user + '@example.test')
     pg.fill('input[name=password]', pw)
     pg.click('#demo-enter')
     expect(pg.locator('#page-title')).to_be_visible(timeout=8000)
@@ -137,7 +137,7 @@ def main() -> int:
             expect(pg.locator('.velvet-role-list')).to_contain_text('Meeting Room', timeout=8000)
             pg.click('[data-setting-group="users"]')
             pg.click('[data-setting-new]')
-            pg.fill('#cfg-username', 'rapat1')
+            pg.fill('#cfg-email', 'rapat1@example.test')
             pg.fill('#cfg-name', 'Ruang Rapat')
             pg.select_option('#cfg-role', 'meeting-room')
             pg.fill('#cfg-password', 'password-rapat-1')

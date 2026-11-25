@@ -57,19 +57,19 @@ export class AuthService {
   ) {}
 
   async login(
-    username: string,
+    email: string,
     password: string,
     req: { requestId: string },
   ): Promise<{ token: string; expiresAt: Date; principal: Principal }> {
     const { rows } = await this.pool.query(
-      `SELECT id, password_hash, failed_attempts, locked_until, active FROM users WHERE username = $1`,
-      [username],
+      `SELECT id, password_hash, failed_attempts, locked_until, active FROM users WHERE email = $1`,
+      [email],
     );
     const user = rows[0];
     if (!user || user['active'] !== true) {
       await argon2.verify(await getDummyHash(), password).catch(() => false);
-      await recordAudit(this.pool, { requestId: req.requestId }, { action: 'auth.login_failed', target: username });
-      throw unauthorized('Username atau password salah');
+      await recordAudit(this.pool, { requestId: req.requestId }, { action: 'auth.login_failed', target: email });
+      throw unauthorized('Email atau password salah');
     }
     const userId = Number(user['id']);
     const lockedUntil = user['locked_until'] ? new Date(String(user['locked_until'])) : null;
@@ -86,9 +86,9 @@ export class AuthService {
            WHERE id = $1`,
           [userId, this.cfg.maxAttempts, String(this.cfg.lockMinutes)],
         );
-        await recordAudit(tx, { requestId: req.requestId }, { action: 'auth.login_failed', target: username });
+        await recordAudit(tx, { requestId: req.requestId }, { action: 'auth.login_failed', target: email });
       });
-      throw unauthorized('Username atau password salah');
+      throw unauthorized('Email atau password salah');
     }
     const token = newToken();
     const expiresAt = new Date(Date.now() + this.cfg.sessionTtlHours * 3600 * 1000);
@@ -99,7 +99,7 @@ export class AuthService {
         tx,
         {
           requestId: req.requestId,
-          principal: { kind: 'user', id: userId, name: username, roleCode: '', permissions: new Set(), locations: [] },
+          principal: { kind: 'user', id: userId, name: email, roleCode: '', permissions: new Set(), locations: [] },
         },
         { action: 'auth.login' },
       );

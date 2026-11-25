@@ -309,7 +309,7 @@ export function PlanningPanel({ lookups }: { readonly lookups: Lookups }) {
 // ---------- Akun ----------
 interface UserRec {
   readonly id: number;
-  readonly username: string;
+  readonly email: string | null;
   readonly display_name: string;
   readonly role: string;
   readonly active: boolean;
@@ -338,9 +338,7 @@ export function UsersPanel() {
   const fields = (SPEC['users'] ?? []).map((f) =>
     f[0] === 'password'
       ? ([f[0], rec ? 'Password baru (kosongkan bila tetap)' : 'Password (min. 10 karakter)', 'password', Boolean(rec)] as Field)
-      : f[0] === 'username' && rec
-        ? ([f[0], 'Username (tidak bisa diubah)', 'text', true] as Field)
-        : f,
+      : f,
   );
   return (
     <>
@@ -354,7 +352,7 @@ export function UsersPanel() {
           lookups={{ lines: [], products: [], roles: roleOpts }}
           record={
             rec
-              ? { id: rec.id, username: rec.username, name: rec.display_name, role: rec.role, site: locList(rec.locations)[0] ?? '' }
+              ? { id: rec.id, email: rec.email ?? '', name: rec.display_name, role: rec.role, site: locList(rec.locations)[0] ?? '' }
               : { role: 'viewer' }
           }
           onCancel={() => setEditing(null)}
@@ -366,6 +364,7 @@ export function UsersPanel() {
             try {
               if (rec) {
                 await api.patch(`/api/v3/access/users/${rec.id}`, {
+                  ...(rec.email !== v['email'] ? {email: v['email']} : {}),
                   display_name: v['name'],
                   role: v['role'],
                   locations,
@@ -374,7 +373,7 @@ export function UsersPanel() {
                 });
               } else {
                 await api.post('/api/v3/access/users', {
-                  username: String(v['username'] ?? ''),
+                  email: String(v['email'] ?? ''),
                   display_name: v['name'],
                   password: pw,
                   role: v['role'],
@@ -397,7 +396,7 @@ export function UsersPanel() {
           active: u.active,
           title: u.display_name,
           detail: [
-            u.username,
+            u.email ?? 'Email belum diisi',
             roles.data?.find((r) => r.code === u.role)?.name ?? u.role,
             locList(u.locations).map(siteName).join(', ') || 'Semua lokasi',
           ],
@@ -409,7 +408,7 @@ export function UsersPanel() {
           if (!u) return;
           api
             .patch(`/api/v3/access/users/${u.id}`, { active: !u.active, version: u.version })
-            .then(() => (setMsg([`Akun ${u.username} ${u.active ? 'dinonaktifkan' : 'diaktifkan'}.`, false]), users.reload()))
+            .then(() => (setMsg([`Akun ${u.email ?? u.display_name} ${u.active ? 'dinonaktifkan' : 'diaktifkan'}.`, false]), users.reload()))
             .catch((e: unknown) => setMsg([errText(e), true]));
         }}
       />

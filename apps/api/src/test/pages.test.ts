@@ -156,7 +156,7 @@ describe('akses: custom role & perangkat', () => {
       permissions: ['dashboard.view'],
       menus: ['monitoring-output', 'lines'],
     });
-    await admin.post('/api/v3/access/users', { username: 'meet1', display_name: 'Meet', password: 'password-panjang-1', role: 'meeting' });
+    await admin.post('/api/v3/access/users', { email: 'meet1@example.test', display_name: 'Meet', password: 'password-panjang-1', role: 'meeting' });
     const meet = await loginAs(h, 'meet1', 'password-panjang-1');
     expect((await meet.get('/api/v3/auth/me')).body.data.menus).toEqual(['lines', 'monitoring-output']);
     expect((await admin.delete('/api/v3/access/roles/meeting')).status).toBe(409);

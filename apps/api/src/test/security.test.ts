@@ -26,7 +26,7 @@ describe('otorisasi per role (INV-004)', () => {
     ['put', '/api/v3/executive/calendar', { year: 2026, month: 11, tempat: 'internal', holidays: [] }],
     ['put', '/api/v3/lines/L09', { shift_scheme: 2, tempat: 'internal' }],
     ['put', '/api/v3/settings/kpi', { value: { oee: 85 } }],
-    ['post', '/api/v3/access/users', { username: 'baru1', display_name: 'Baru', password: 'password-panjang-1', role: 'viewer' }],
+    ['post', '/api/v3/access/users', { email: 'baru1@example.test', display_name: 'Baru', password: 'password-panjang-1', role: 'viewer' }],
     ['post', '/api/v3/access/devices/pairing-codes', {}],
   ];
 
@@ -70,7 +70,7 @@ describe('otorisasi per role (INV-004)', () => {
       menus: ['monitoring'],
     });
     expect(saved.status).toBe(200);
-    await admin.post('/api/v3/access/users', { username: 'exp1', display_name: 'Exp', password: 'password-panjang-1', role: 'exporter' });
+    await admin.post('/api/v3/access/users', { email: 'exp1@example.test', display_name: 'Exp', password: 'password-panjang-1', role: 'exporter' });
     const exp = await loginAs(h, 'exp1', 'password-panjang-1');
     expect(
       (
@@ -103,13 +103,13 @@ describe('login', () => {
   it('password salah → 401 pesan seragam; dikunci setelah batas percobaan', async () => {
     const h = await createHarness();
     await h.createUser('user1', 'viewer');
-    const unknown = await request(h.app).post('/api/v3/auth/login').send({ username: 'tidakada', password: 'x' });
-    const wrong = await request(h.app).post('/api/v3/auth/login').send({ username: 'user1', password: 'salah' });
+    const unknown = await request(h.app).post('/api/v3/auth/login').send({ email: 'tidakada@example.test', password: 'x' });
+    const wrong = await request(h.app).post('/api/v3/auth/login').send({ email: 'user1@example.test', password: 'salah' });
     expect(unknown.status).toBe(401);
     expect(wrong.body.error.message).toBe(unknown.body.error.message);
-    await request(h.app).post('/api/v3/auth/login').send({ username: 'user1', password: 'salah' });
-    await request(h.app).post('/api/v3/auth/login').send({ username: 'user1', password: 'salah' });
-    const locked = await request(h.app).post('/api/v3/auth/login').send({ username: 'user1', password: 'password-rahasia-1' });
+    await request(h.app).post('/api/v3/auth/login').send({ email: 'user1@example.test', password: 'salah' });
+    await request(h.app).post('/api/v3/auth/login').send({ email: 'user1@example.test', password: 'salah' });
+    const locked = await request(h.app).post('/api/v3/auth/login').send({ email: 'user1@example.test', password: 'password-rahasia-1' });
     expect(locked.status).toBe(429);
     expect(locked.body.error.code).toBe('ACCOUNT_LOCKED');
     const audit = h.dashboardDb.public.many(`SELECT action FROM audit_log WHERE action = 'auth.login_failed'`);
@@ -120,7 +120,7 @@ describe('login', () => {
     const h = await createHarness();
     await h.createUser('user2', 'viewer');
     const agent = request.agent(h.app);
-    const res = await agent.post('/api/v3/auth/login').send({ username: 'user2', password: 'password-rahasia-1' });
+    const res = await agent.post('/api/v3/auth/login').send({ email: 'user2@example.test', password: 'password-rahasia-1' });
     const cookie = String(res.headers['set-cookie']);
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('SameSite=Strict');

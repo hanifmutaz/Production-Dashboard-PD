@@ -68,7 +68,7 @@ def main() -> int:
                              if not x.startswith('#demo-enter')]  # tombol login sengaja beda (role demo → username/password)
                 v.screenshot(path=str(OUT / f'v3-{tag}.png'))
                 m.check('input[value=admin]'); m.click('#demo-enter'); m.wait_for_timeout(600)
-                v.fill('input[name=username]', 'admin'); v.fill('input[name=password]', 'admin12345'); v.click('#demo-enter'); v.wait_for_timeout(1300)
+                v.fill('input[name=email]', 'admin@example.test'); v.fill('input[name=password]', 'admin12345'); v.click('#demo-enter'); v.wait_for_timeout(1300)
                 for page, sels in PAGES.items():
                     m.evaluate(f"location.hash='#{MOCK_ROUTE.get(page, page)}'"); v.evaluate(f"location.hash='#{V3_ROUTE.get(page, page)}'")
                     m.mouse.move(0, 0); v.mouse.move(0, 0)

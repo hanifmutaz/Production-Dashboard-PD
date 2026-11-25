@@ -1,7 +1,7 @@
 // Port SETTINGS_SECTIONS / SETTINGS_GROUPS / SETTINGS_SPEC mockup.
 // Field: [key, label, type, optional?, options|min, max]
 export type FieldType =
-  'text' | 'code' | 'color' | 'enum' | 'site' | 'line' | 'product' | 'num' | 'int' | 'bool' | 'month' | 'date' | 'time' | 'password';
+  'text' | 'email' | 'code' | 'color' | 'enum' | 'site' | 'line' | 'product' | 'num' | 'int' | 'bool' | 'month' | 'date' | 'time' | 'password';
 export type Field = readonly [string, string, FieldType, boolean?, (readonly (readonly [string, string])[] | number)?, number?];
 
 export const CATEGORIES = ['Machine', 'Man', 'Material', 'Method', 'Other'] as const;
@@ -146,7 +146,7 @@ export const SPEC: Readonly<Record<string, readonly Field[]>> = {
     ['remark', 'Kolom remark', 'text', true],
   ],
   users: [
-    ['username', 'Username', 'code'],
+    ['email', 'Email', 'email'],
     ['name', 'Nama akun', 'text'],
     ['role', 'Role', 'enum', false, []],
     ['site', 'Cakupan lokasi (kosong = semua)', 'site', true],
@@ -286,6 +286,7 @@ export function cleanField(field: Field, value: unknown): Check {
   const s = String(value).trim();
   if (!s) return optional ? { value: '' } : { error: `${label} wajib diisi.` };
   const patterns: Partial<Record<FieldType, RegExp>> = {
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     code: /^[a-zA-Z0-9._-]{1,60}$/,
     color: /^#[a-f\d]{6}$/i,
     month: /^20\d\d-(0[1-9]|1[0-2])$/,
@@ -294,7 +295,7 @@ export function cleanField(field: Field, value: unknown): Check {
     line: /^[a-zA-Z0-9_-]{1,40}$/,
   };
   const p = patterns[type];
-  if ((p && !p.test(s)) || (type === 'enum' && Array.isArray(opt) && opt.length && !opt.some(([k]) => k === s)) || s.length > 130)
+  if ((p && !p.test(s)) || (type === 'enum' && Array.isArray(opt) && opt.length && !opt.some(([k]) => k === s)) || s.length > (type === 'email' ? 254 : 130))
     return { error: `${label} tidak valid.` };
   if (type === 'password' && s.length < 10) return { error: `${label.split(' (')[0]} minimal 10 karakter.` };
   return { value: type === 'code' && field[0] !== 'username' ? s.toUpperCase() : s };

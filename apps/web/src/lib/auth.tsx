@@ -22,7 +22,7 @@ interface AuthState {
   /** Port allowedRoute() mockup: Custom Role & perangkat kiosk. */
   allowed(route: string): boolean;
   readonly loading: boolean;
-  login(username: string, password: string): Promise<void>;
+  login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
   can(permission: string): boolean;
 }
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const value: AuthState = {
     me,
     loading,
-    async login(username, password) {
-      await api.post('/api/v3/auth/login', { username, password });
+    async login(email, password) {
+      await api.post('/api/v3/auth/login', { email, password });
       await refresh();
     },
     async logout() {

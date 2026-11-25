@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   );
   const hash = await AuthService.hashPassword('admin12345');
   dashDb.public.none(
-    `INSERT INTO users (username, display_name, password_hash, role_id) SELECT 'admin', 'Admin', '${hash}', id FROM roles WHERE code = 'admin'`,
+    `INSERT INTO users (username, email, display_name, password_hash, role_id) SELECT 'admin', 'admin@example.test', 'Admin', '${hash}', id FROM roles WHERE code = 'admin'`,
   );
   const ym = formatIsoDate(now).slice(0, 7).split('-').map(Number);
   dashDb.public.none(`INSERT INTO targets (location, year, month, target) VALUES ('internal', ${ym[0]}, ${ym[1]}, 60000)`);
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   });
   app.listen(port, () => {
     const web = existsSync(path.join(REPO_ROOT, 'apps/web/dist/index.html')) ? '' : ' (web belum di-build: npm run build -w @v3/web)';
-    console.log(`dev:mem jalan di http://localhost:${port}${web} — login admin / admin12345 — ${specs.length} report fixture`);
+    console.log(`dev:mem jalan di http://localhost:${port}${web} — login admin@example.test / admin12345 — ${specs.length} report fixture`);
   });
 }
 

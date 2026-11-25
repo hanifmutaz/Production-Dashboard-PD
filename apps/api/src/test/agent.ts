@@ -4,7 +4,7 @@ import type { Harness } from './harness.js';
 /** Login lalu kembalikan agent supertest yang membawa cookie sesi + header CSRF untuk request tulis. */
 export async function loginAs(h: Harness, username: string, password = 'password-rahasia-1') {
   const agent = request.agent(h.app);
-  const res = await agent.post('/api/v3/auth/login').send({ username, password });
+  const res = await agent.post('/api/v3/auth/login').send({ email: username + '@example.test', password });
   if (res.status !== 200) throw new Error(`login gagal ${res.status} ${JSON.stringify(res.body)}`);
   return {
     get: (url: string) => agent.get(url),

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { principalOf, requirePermission } from '../../http/auth.js';
@@ -102,7 +103,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     try {
       // Tanpa array_agg agar portabel (pg-mem & Postgres); cakupan lokasi digabung di aplikasi.
       const { rows } = await pool.query(
-        `SELECT u.id, u.username, u.display_name, r.code AS role, u.active, u.locked_until, u.version FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.username`,
+        `SELECT u.id, u.username, u.email, u.display_name, r.code AS role, u.active, u.locked_until, u.version FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.username`,
       );
       const scope = await pool.query(`SELECT user_id, location FROM user_site_scope ORDER BY location`);
       const byUser = new Map<number, string[]>();
@@ -117,7 +118,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     try {
       const b = parseInput(
         z.object({
-          username: z.string().regex(/^[A-Za-z0-9._-]{3,60}$/),
+          email: z.string().trim().toLowerCase().max(254).email(),
           display_name: z.string().min(1).max(80),
           password,
           role: z.string(),
@@ -130,20 +131,21 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
         const role = (await tx.query(`SELECT id FROM roles WHERE code = $1`, [b.role])).rows[0];
         if (!role) throw badRequest('Role tidak dikenal');
         const ins = await tx
-          .query(`INSERT INTO users (username, display_name, password_hash, role_id) VALUES ($1, $2, $3, $4) RETURNING id`, [
-            b.username,
+          .query(`INSERT INTO users (email, display_name, password_hash, role_id, username) VALUES ($1, $2, $3, $4, $5) RETURNING id`, [
+            b.email,
             b.display_name,
             hash,
             role['id'],
+            randomUUID(),
           ])
           .catch((err: unknown) => {
-            throw isUniqueViolation(err) ? conflict('Username sudah dipakai') : err;
+            throw isUniqueViolation(err) ? conflict('Email sudah dipakai') : err;
           });
-        if (!ins.rows[0]) throw conflict('Username sudah dipakai');
+        if (!ins.rows[0]) throw conflict('Email sudah dipakai');
         const id = Number(ins.rows[0]['id']);
         for (const l of new Set(b.locations)) await tx.query(`INSERT INTO user_site_scope (user_id, location) VALUES ($1, $2)`, [id, l]);
-        await recordAudit(tx, req, { action: 'user.create', target: b.username, detail: { role: b.role, locations: b.locations } });
-        return { id, username: b.username };
+        await recordAudit(tx, req, { action: 'user.create', target: b.email, detail: { role: b.role, locations: b.locations } });
+        return { id, email: b.email };
       });
       res.status(201).json({ data: user, status: 'ok' });
     } catch (e) {
@@ -159,6 +161,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           display_name: z.string().min(1).max(80).optional(),
           role: z.string().optional(),
           active: z.boolean().optional(),
+          email: z.string().trim().toLowerCase().max(254).email().optional(),
           password: password.optional(),
           locations: z.array(tempat).max(3).optional(),
           version: z.number().int().positive(),
@@ -172,11 +175,11 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
         const roleId = b.role ? (await tx.query(`SELECT id FROM roles WHERE code = $1`, [b.role])).rows[0]?.['id'] : null;
         if (b.role && !roleId) throw badRequest('Role tidak dikenal');
         const upd = await tx.query(
-          `UPDATE users SET display_name = COALESCE($2, display_name), role_id = COALESCE($3, role_id), active = COALESCE($4, active),
+          `UPDATE users SET email = COALESCE($7, email), display_name = COALESCE($2, display_name), role_id = COALESCE($3, role_id), active = COALESCE($4, active),
              password_hash = COALESCE($5, password_hash), failed_attempts = CASE WHEN $5::text IS NULL THEN failed_attempts ELSE 0 END,
              locked_until = CASE WHEN $5::text IS NULL THEN locked_until ELSE NULL END, version = version + 1, updated_at = now()
            WHERE id = $1 AND version = $6 RETURNING id`,
-          [id, b.display_name ?? null, roleId ?? null, b.active ?? null, hash, b.version],
+          [id, b.display_name ?? null, roleId ?? null, b.active ?? null, hash, b.version, b.email ?? null],
         );
         if (!upd.rows[0]) throw conflict();
         if (b.locations) {
@@ -184,7 +187,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           for (const l of new Set(b.locations)) await tx.query(`INSERT INTO user_site_scope (user_id, location) VALUES ($1, $2)`, [id, l]);
         }
         // Sesi lama dicabut saat password/role/status berubah.
-        if (hash || b.role || b.active === false) await tx.query(`DELETE FROM sessions WHERE user_id = $1`, [id]);
+        if (hash || b.email || b.role || b.active === false) await tx.query(`DELETE FROM sessions WHERE user_id = $1`, [id]);
         await recordAudit(tx, req, {
           action: 'user.update',
           target: String(id),
@@ -193,7 +196,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
       });
       res.json({ data: { id }, status: 'ok' });
     } catch (e) {
-      next(e);
+      next(isUniqueViolation(e) ? conflict('Email sudah dipakai') : e);
     }
   });
 
