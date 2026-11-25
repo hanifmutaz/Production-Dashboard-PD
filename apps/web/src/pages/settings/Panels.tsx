@@ -2,11 +2,12 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { fmt, MON } from '../../lib/format';
+import { dayList, lastOfMonth } from '../../lib/dates';
+import { fmt } from '../../lib/format';
 import { Icon } from '../../lib/icons';
 import { useConfig } from '../../lib/kpi';
 import { siteName, SITES } from '../../lib/sites';
-import { useApi } from '../../lib/useApi';
+import { useApi, type ApiState } from '../../lib/useApi';
 import { Editor, ListTable, type Lookups } from './Fields';
 import { MENU_OPTIONS, SPEC, type Field } from './spec';
 import { useSaveSetting } from './Settings';
@@ -200,108 +201,245 @@ interface Plan {
   readonly lines: readonly { line_code: string; target: number; work_days: number; note: string; version: number }[];
 }
 
-export function PlanningPanel({ lookups }: { readonly lookups: Lookups }) {
+type MasterLines = ApiState<Pick<LineRec, 'line_code' | 'product' | 'location'>[]>;
+type TargetDraft = { qty: string; days: string; note: string; version?: number };
+type PlanningProps = { readonly master: MasterLines };
+
+export function PlanningPanel({ master }: PlanningProps) {
   const { me } = useAuth();
   const [period, setPeriod] = useState((me?.today ?? '').slice(0, 7));
-  const y = Number(period.slice(0, 4));
-  const m = Number(period.slice(5));
-  const plan = useApi<Plan>(`/api/v3/planning?year=${y}&month=${m}`);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [msg, setMsg] = useState<[string, boolean]>(['', false]);
-  const rows = [
-    ...(plan.data?.locations ?? []).map((l) => ({
-      id: `loc:${l.location}`,
-      active: true,
-      title: siteName(l.location),
-      detail: [period, `${fmt(Number(l.target))} pcs`, 'Target lokasi'],
-    })),
-    ...(plan.data?.lines ?? []).map((l) => ({
-      id: `line:${l.line_code}`,
-      active: true,
-      title: `${siteName('internal')} · ${l.line_code}`,
-      detail: [period, `${fmt(Number(l.target))} pcs`, `${l.work_days} hari`, l.note],
-    })),
-  ];
-  const locRec = editing?.startsWith('loc:') ? plan.data?.locations.find((l) => `loc:${l.location}` === editing) : undefined;
-  const lineRec = editing?.startsWith('line:') ? plan.data?.lines.find((l) => `line:${l.line_code}` === editing) : undefined;
-  const record = locRec
-    ? { id: editing, site: locRec.location, line: '', period, qty: Number(locRec.target), days: 1, note: '' }
-    : lineRec
-      ? {
-          id: editing,
-          site: 'internal',
-          line: lineRec.line_code,
-          period,
-          qty: Number(lineRec.target),
-          days: lineRec.work_days,
-          note: lineRec.note,
+  return <MonthTargets key={period} master={master} period={period} changePeriod={setPeriod} />;
+}
+
+function MonthTargets({
+  master,
+  period,
+  changePeriod,
+}: PlanningProps & {
+  readonly period: string;
+  readonly changePeriod: (month: string) => void;
+}) {
+  const [year, month] = period.split('-').map(Number);
+  const query = `year=${year}&month=${month}`;
+  const plan = useApi<Plan>(`/api/v3/planning?${query}`);
+  const calendar = useApi<{ holidays: string[] }>(`/api/v3/executive/calendar?tempat=internal&${query}`);
+  const [drafts, setDrafts] = useState<Record<string, TargetDraft>>({});
+  const [search, setSearch] = useState('');
+  const [missing, setMissing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<[string, boolean]>(['', false]);
+  const holidays = new Set(calendar.data?.holidays);
+  const workDays = calendar.data ? dayList(`${period}-01`, lastOfMonth(period)).filter((d) => !holidays.has(d)).length : null;
+  const saved = new Map<string, TargetDraft>();
+  for (const t of plan.data?.lines ?? []) {
+    saved.set('line:' + t.line_code, { qty: String(t.target), days: String(t.work_days), note: t.note, version: t.version });
+  }
+  for (const t of plan.data?.locations ?? []) {
+    saved.set('loc:' + t.location, { qty: String(t.target), days: '', note: '', version: t.version });
+  }
+  const baseline = (id: string): TargetDraft =>
+    saved.get(id) ?? {
+      qty: '',
+      days: id.startsWith('line:') && workDays !== null ? String(workDays) : '',
+      note: '',
+    };
+  const value = (id: string) => drafts[id] ?? baseline(id);
+  const edit = (id: string, changes: Partial<TargetDraft>) => {
+    const original = baseline(id);
+    const next = { ...value(id), ...changes };
+    setDrafts((old) => {
+      const copy = { ...old, [id]: next };
+      if (next.qty === original.qty && next.days === original.days && next.note === original.note) delete copy[id];
+      return copy;
+    });
+  };
+  const pending = Object.entries(drafts);
+  const ready = Boolean(plan.data && master.data && calendar.data) && !plan.loading && !master.loading && !calendar.loading;
+  const save = async () => {
+    if (busy || !ready || !pending.length) return;
+    for (const [id, d] of pending) {
+      const label = id.slice(id.indexOf(':') + 1);
+      if (!/^\d+$/.test(d.qty) || Number(d.qty) > 1_000_000_000) {
+        setMessage([`Isi target ${label} dengan angka bulat 0–1.000.000.000 pcs.`, true]);
+        return;
+      }
+      if (id.startsWith('line:') && (!/^\d+$/.test(d.days) || Number(d.days) < 1 || Number(d.days) > 31)) {
+        setMessage([`Isi hari kerja ${label} antara 1 dan 31.`, true]);
+        return;
+      }
+      if (d.version !== saved.get(id)?.version) {
+        setMessage([`Target ${label} berubah. Batalkan isian baris itu untuk melihat nilai terbaru sebelum mengedit lagi.`, true]);
+        return;
+      }
+    }
+    setBusy(true);
+    let completed = 0;
+    let current = '';
+    try {
+      for (const [id, d] of pending) {
+        current = id.slice(id.indexOf(':') + 1);
+        const body = { year, month, target: Number(d.qty), version: d.version };
+        if (id.startsWith('loc:')) {
+          await api.put('/api/v3/executive/target', { ...body, tempat: current });
+        } else {
+          await api.put('/api/v3/planning/line', { ...body, line_code: current, work_days: Number(d.days), note: d.note });
         }
-      : { site: 'internal', line: '', period, days: 21 };
+        completed += 1;
+        setDrafts((old) => {
+          const copy = { ...old };
+          delete copy[id];
+          return copy;
+        });
+      }
+      setMessage([`${completed} target disimpan.`, false]);
+    } catch (e) {
+      setMessage([`${completed} target disimpan. ${current}: ${errText(e)}`, true]);
+    } finally {
+      plan.reload();
+      setBusy(false);
+    }
+  };
+  const undo = (id: string) =>
+    drafts[id] ? (
+      <button
+        className="btn"
+        type="button"
+        disabled={busy}
+        aria-label={`Batalkan isian ${id.slice(id.indexOf(':') + 1)}`}
+        onClick={() =>
+          setDrafts((old) => {
+            const copy = { ...old };
+            delete copy[id];
+            return copy;
+          })
+        }
+      >
+        Batal
+      </button>
+    ) : null;
+  const input = (id: string, label: string, field: 'qty' | 'days') => (
+    <input
+      type="number"
+      aria-label={label}
+      min={field === 'days' ? 1 : 0}
+      max={field === 'days' ? 31 : 1000000000}
+      style={{ width: field === 'days' ? '5rem' : '10rem', color: 'var(--txt)', background: 'var(--card)' }}
+      placeholder={field === 'qty' ? 'Belum ada target' : 'Hari'}
+      step="1"
+      disabled={!ready || busy}
+      value={value(id)[field]}
+      onChange={(e) => edit(id, { [field]: e.target.value })}
+    />
+  );
+  const lines = new Map((master.data ?? []).filter((l) => l.location === 'internal').map((l) => [l.line_code, l.product]));
+  // Keep previously planned lines accessible if the master record was removed.
+  const known = new Set((master.data ?? []).map((l) => l.line_code));
+  for (const l of plan.data?.lines ?? []) if (!known.has(l.line_code)) lines.set(l.line_code, '');
+  const needle = search.trim().toLowerCase();
+  const visible = [...lines].filter(
+    ([code, product]) => `${code} ${product}`.toLowerCase().includes(needle) && (!missing || !saved.has('line:' + code)),
+  );
+  const error = master.error || plan.error || calendar.error;
   return (
     <>
-      <Feedback msg={msg[0]} error={msg[1]} />
-      {editing ? (
-        <Editor
-          section="planning"
-          label="Target"
-          isList
-          lookups={lookups}
-          record={record}
-          onCancel={() => setEditing(null)}
-          onSave={async (v) => {
-            const [py, pm] = String(v['period']).split('-').map(Number);
-            try {
-              if (v['line']) {
-                await api.put('/api/v3/planning/line', {
-                  line_code: v['line'],
-                  year: py,
-                  month: pm,
-                  target: v['qty'],
-                  work_days: v['days'],
-                  note: v['note'] ?? '',
-                  ...(lineRec && String(v['line']) === lineRec.line_code && String(v['period']) === period
-                    ? { version: lineRec.version }
-                    : {}),
-                });
-              } else {
-                const existing = String(v['period']) === period ? plan.data?.locations.find((l) => l.location === v['site']) : undefined;
-                await api.put('/api/v3/executive/target', {
-                  year: py,
-                  month: pm,
-                  tempat: v['site'],
-                  target: v['qty'],
-                  ...(existing ? { version: existing.version } : {}),
-                });
-              }
-            } catch (e) {
-              throw new Error(errText(e), { cause: e });
-            }
-            setMsg(['Target disimpan.', false]);
-            setEditing(null);
-            plan.reload();
-          }}
-        />
-      ) : null}
-      <ListTable
-        label={`Target ${MON[m - 1] ?? ''} ${y}`}
-        rows={rows}
-        onEdit={setEditing}
-        headerExtra={
-          <div className="settings-tabs">
-            <input
-              type="month"
-              value={period}
-              min="2024-01"
-              max="2099-12"
-              aria-label="Bulan target"
-              onChange={(e) => e.target.value && setPeriod(e.target.value)}
-            />
-            <button className="btn pri" type="button" onClick={() => setEditing('new')}>
-              <Icon name="plus" size={16} /> Tambah
-            </button>
-          </div>
-        }
-      />
+      <section className="settings-card settings-list">
+        <header>
+          <h3>Target lokasi</h3>
+          <input
+            type="month"
+            aria-label="Bulan target"
+            value={period}
+            min="2024-01"
+            max="2099-12"
+            disabled={busy}
+            onChange={(e) => {
+              if (e.target.value && (!pending.length || window.confirm('Buang perubahan bulan ini?'))) changePeriod(e.target.value);
+            }}
+          />
+        </header>
+        <div className="settings-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Lokasi</th>
+                <th>Target bulanan (pcs)</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SITES.map((site) => (
+                <tr key={site}>
+                  <th scope="row">{siteName(site)}</th>
+                  <td>{site === 'internal' || saved.has('loc:' + site) ? input('loc:' + site, `Target ${siteName(site)}`, 'qty') : 'On Hold'}</td>
+                  <td>{undo('loc:' + site)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section className="settings-card settings-list">
+        <header>
+          <h3>Target per line · Hirose Internal</h3>
+          <button type="button" className="btn" disabled={!ready || busy || !pending.length} onClick={() => void save()}>
+            {busy ? 'Menyimpan…' : `Simpan perubahan${pending.length ? ` (${pending.length})` : ''}`}
+          </button>
+        </header>
+        <Feedback msg={error || message[0]} error={Boolean(error) || message[1]} />
+        <div className="settings-tabs">
+          <input
+            type="search"
+            aria-label="Cari line atau series"
+            placeholder="Cari line atau series"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <label>
+            <input type="checkbox" checked={missing} onChange={(e) => setMissing(e.target.checked)} /> Belum ada target
+          </label>
+        </div>
+        <div className="settings-table" style={{ overflow: 'auto', maxHeight: '60vh' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Series</th>
+                <th>Target bulanan (pcs)</th>
+                <th>Hari kerja</th>
+                <th>Target/hari (pcs)</th>
+                <th>Catatan</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(([code, product]) => {
+                const id = 'line:' + code;
+                const d = value(id);
+                return (
+                  <tr key={code}>
+                    <th scope="row">{code}</th>
+                    <td>{product || '—'}</td>
+                    <td>{input(id, `Target bulanan ${code}`, 'qty')}</td>
+                    <td>{input(id, `Hari kerja ${code}`, 'days')}</td>
+                    <td>{d.qty !== '' && Number(d.days) > 0 ? fmt(Number(d.qty) / Number(d.days)) : '—'}</td>
+                    <td>
+                      <input
+                        aria-label={`Catatan ${code}`}
+                        maxLength={130}
+                        value={d.note}
+                        disabled={!ready || busy}
+                        onChange={(e) => edit(id, { note: e.target.value })}
+                      />
+                    </td>
+                    <td>{undo(id)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!visible.length && !error ? <p>{ready ? 'Tidak ada line yang cocok.' : 'Memuat target…'}</p> : null}
+      </section>
     </>
   );
 }

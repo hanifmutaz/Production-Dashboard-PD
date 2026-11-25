@@ -399,7 +399,7 @@ export function Settings() {
   const [section, setSection] = useState('kpi'); // sama dengan settingsUI.section mockup
   const groups = SETTINGS_GROUPS[section];
   const [group, setGroup] = useState<Record<string, string>>({});
-  const lines = useApi<{ line_code: string }[]>(can('config.edit') ? '/api/v3/lines/all' : null);
+  const lines = useApi<{ line_code: string; product: string; location: string }[]>(can('config.edit') ? '/api/v3/lines/all' : null);
   if (!can('config.edit') && !can('users.manage')) return <ReadOnly />;
   const key = groups ? (group[section] ?? groups[0]?.[0] ?? section) : section;
   const products = ((raw.get('config.products')?.value as { rows?: Rows } | undefined)?.rows ?? [])
@@ -437,7 +437,7 @@ export function Settings() {
       body = <LinesPanel lookups={lookups} onChange={lines.reload} />;
       break;
     case 'planning':
-      body = <PlanningPanel lookups={lookups} />;
+      body = <PlanningPanel master={lines} />;
       break;
     case 'shifts':
       body = <ShiftsPanel />;
