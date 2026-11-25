@@ -75,7 +75,8 @@ export function createApp(deps: AppDeps): Express {
       },
     }),
   );
-  app.use(helmet());
+  // Pilot LAN memakai HTTP; mode cookie Secure mempertahankan kebijakan HTTPS.
+  app.use(helmet(deps.cookieSecure ? {} : { contentSecurityPolicy: { directives: { upgradeInsecureRequests: null } } }));
   app.use(cookieParser());
 
   const linesRepo = new LinesRepository(deps.dashboard);
