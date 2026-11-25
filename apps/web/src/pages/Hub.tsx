@@ -260,8 +260,9 @@ export function Hub() {
   const start = period === 'daily' ? day : rng.f;
   const end = period === 'daily' ? day : rng.t;
   const trendFrom = period === 'daily' ? (addD(day, -6) < MIN_D ? MIN_D : addD(day, -6)) : rng.f;
-  const summary = useApi<Summary>(`/api/v3/reporting/summary/range?start=${start}&end=${end}&location=internal`);
-  const trend = useApi<Trend>(`/api/v3/reporting/trend/range?start=${trendFrom}&end=${end}&location=internal`);
+  const refreshKey = me?.kind === 'device' ? me.now : undefined;
+  const summary = useApi<Summary>(`/api/v3/reporting/summary/range?start=${start}&end=${end}&location=internal`, refreshKey);
+  const trend = useApi<Trend>(`/api/v3/reporting/trend/range?start=${trendFrom}&end=${end}&location=internal`, refreshKey);
   const rows: Row[] = SITES.map((site) => ({ site, ok: site === 'internal', s: site === 'internal' ? summary.data : null }));
   const label = period === 'daily' ? fd(day) : rangeLabel(rng);
   const tabs: [typeof period, string][] = [

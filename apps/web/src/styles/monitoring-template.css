@@ -712,3 +712,18 @@ td,.num,output,.ach-reading,.master-chart-pct,.line-chart-actual,.hub-comparison
 td{font-weight:600}
 .ach-reading,.master-chart-pct{font-weight:700}
 .hub-trend-tick,.bar-value,.hub-trend-tooltip-row b,svg text{font-family:var(--font-data);font-variant-numeric:tabular-nums lining-nums;font-weight:500}
+
+/* The monitoring table renders in a shadow root and inherits the theme tokens. */
+.btn.primary, .top .btn.primary {
+  color:var(--action-ink); background:var(--action-fill); border-color:var(--action-fill);
+}
+.btn.primary:enabled:hover, .top .btn.primary:enabled:hover {
+  color:var(--action-ink); background:var(--action-hover); border-color:var(--action-hover);
+}
+.btn.primary:enabled:active, .top .btn.primary[aria-pressed=true] {
+  color:var(--action-ink); background:var(--action-pressed); border-color:var(--action-pressed);
+}
+.btn.primary:disabled {
+  background:var(--bg); color:var(--dim); border-color:var(--bd); opacity:1;
+}
+.btn:focus-visible { outline:2px solid var(--action-fill); outline-offset:3px; }

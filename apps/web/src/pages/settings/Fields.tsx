@@ -1,5 +1,5 @@
 // Port settingsField/settingsEditor/settingsRows/settingsList mockup (generik).
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Icon } from '../../lib/icons';
 import { SITES, siteName } from '../../lib/sites';
 import { validate, SPEC, type Field } from './spec';
@@ -47,6 +47,9 @@ export function SettingField({
     control = (
       <select id={id} name={key} defaultValue={String(value)} {...(optional ? {} : { required: true })}>
         {type === 'enum' ? null : <option value="">{empty}</option>}
+        {type === 'product' && value && !options.some(([code]) => code === String(value)) ? (
+          <option value={String(value)}>{String(value)}</option>
+        ) : null}
         {options.map(([o, c]) => (
           <option key={o} value={o}>
             {c}
@@ -109,6 +112,17 @@ export function Editor({
 }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const identity = record['id'];
+  useEffect(() => {
+    if (!isList) return;
+    const trigger = document.activeElement;
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.scrollIntoView({ block: 'start' });
+    return () => {
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+    };
+  }, [section, identity, isList]);
   const spec = fields ?? SPEC[section] ?? [];
   const submit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -132,9 +146,9 @@ export function Editor({
     <section className="settings-card settings-editor" id="settings-editor">
       {isList ? (
         <header>
-          <h3>
+          <h3 ref={heading} tabIndex={-1}>
             {record['id'] ? 'Edit ' : 'Tambah '}
-            {label}
+            {label}{section === 'lines' && identity ? ` · ${String(identity)}` : ''}
           </h3>
           <button className="btn" type="button" onClick={onCancel}>
             Batal

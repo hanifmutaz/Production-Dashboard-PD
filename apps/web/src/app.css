@@ -12,3 +12,27 @@
   color: var(--tx);
 }
 #demo-login-form .fld + .fld { margin-top: 12px; }
+
+/* Native form controls inherit the dashboard palette in both themes. */
+:where(#root) :where(input:not([type]), input[type="text"], input[type="month"], input[type="date"], input[type="number"], input[type="search"], select, textarea) {
+  box-sizing: border-box;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 7px 10px;
+  color: var(--tx);
+  background-color: var(--pan);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  font: inherit;
+}
+#root :where(input, select, textarea, button, a):focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.settings-tabs { align-items: center; }
+.settings-tabs label:has(input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+.settings-tabs input[type="checkbox"] { accent-color: var(--acc); }
+.settings-editor h3 { scroll-margin-block-start: calc(var(--access-bar, 58px) + 24px); }
+.target-line-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--pan); }
+.settings-card header { flex-wrap: wrap; gap: 10px; }
+.department-tv { padding: clamp(12px, 2vw, 38px); }

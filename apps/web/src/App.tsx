@@ -31,7 +31,7 @@ export function App() {
   if (!location.hash && ['hub', 'monitoring-output'].includes(home)) route = { page: home as 'hub' };
   // Perangkat kiosk hanya melihat line miliknya (port allowedRoute + pairedDevice).
   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) {
-    return <main id="view" key={me.now}>
+    return <main id="view" className="department-tv" key={`${me.screen}-${me.today}`}>
       <h1>{me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'}</h1>
       {me.screen === 'hub' ? <Hub /> : <Executive />}
     </main>;

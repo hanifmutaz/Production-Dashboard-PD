@@ -126,7 +126,8 @@ function Cell({
 }
 
 export function Executive() {
-  const { can } = useAuth();
+  const { can, me } = useAuth();
+  const refreshKey = me?.kind === 'device' ? me.now : undefined;
   const now = new Date(Date.now() + 7 * 3600 * 1000);
   const [yr, setYr] = useState(now.getUTCFullYear());
   const [mo, setMo] = useState(now.getUTCMonth()); // 0-based seperti mockup S.mo
@@ -150,7 +151,7 @@ export function Executive() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const note = (text: string): void => {
     const el = document.getElementById('header-note');

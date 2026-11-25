@@ -10,7 +10,7 @@ export interface ApiState<T> {
 }
 
 /** GET data; url null = tidak memuat. Respons lama diabaikan bila url berganti (hindari balapan). */
-export function useApi<T>(url: string | null): ApiState<T> {
+export function useApi<T>(url: string | null, refreshKey?: string): ApiState<T> {
   const [state, setState] = useState<{ env: Envelope<T> | null; error: string; loading: boolean }>({
     env: null,
     error: '',
@@ -30,6 +30,6 @@ export function useApi<T>(url: string | null): ApiState<T> {
         if (id === seq.current) setState({ env: null, error: e instanceof ApiError ? e.message : 'Data gagal dimuat.', loading: false });
       });
   }, [url]);
-  useEffect(load, [load]);
+  useEffect(load, [load, refreshKey]);
   return { data: state.env?.data ?? null, status: state.env?.status ?? '', error: state.error, loading: state.loading, reload: load };
 }

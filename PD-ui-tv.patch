@@ -1,0 +1,171 @@
+diff --git a/apps/web/src/pages/settings/Fields.tsx b/apps/web/src/pages/settings/Fields.tsx
+--- a/apps/web/src/pages/settings/Fields.tsx
++++ b/apps/web/src/pages/settings/Fields.tsx
+@@ -1,5 +1,5 @@
+ // Port settingsField/settingsEditor/settingsRows/settingsList mockup (generik).
+-import { useState, type FormEvent, type ReactNode } from 'react';
++import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+ import { Icon } from '../../lib/icons';
+ import { SITES, siteName } from '../../lib/sites';
+ import { validate, SPEC, type Field } from './spec';
+@@ -47,6 +47,9 @@
+     control = (
+       <select id={id} name={key} defaultValue={String(value)} {...(optional ? {} : { required: true })}>
+         {type === 'enum' ? null : <option value="">{empty}</option>}
++        {type === 'product' && value && !options.some(([code]) => code === String(value)) ? (
++          <option value={String(value)}>{String(value)}</option>
++        ) : null}
+         {options.map(([o, c]) => (
+           <option key={o} value={o}>
+             {c}
+@@ -109,6 +112,17 @@
+ }) {
+   const [error, setError] = useState('');
+   const [busy, setBusy] = useState(false);
++  const heading = useRef<HTMLHeadingElement>(null);
++  const identity = record['id'];
++  useEffect(() => {
++    if (!isList) return;
++    const trigger = document.activeElement;
++    heading.current?.focus({ preventScroll: true });
++    heading.current?.scrollIntoView({ block: 'start' });
++    return () => {
++      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
++    };
++  }, [section, identity, isList]);
+   const spec = fields ?? SPEC[section] ?? [];
+   const submit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+     e.preventDefault();
+@@ -132,9 +146,9 @@
+     <section className="settings-card settings-editor" id="settings-editor">
+       {isList ? (
+         <header>
+-          <h3>
++          <h3 ref={heading} tabIndex={-1}>
+             {record['id'] ? 'Edit ' : 'Tambah '}
+-            {label}
++            {label}{section === 'lines' && identity ? ` · ${String(identity)}` : ''}
+           </h3>
+           <button className="btn" type="button" onClick={onCancel}>
+             Batal
+diff --git a/apps/web/src/pages/settings/Panels.tsx b/apps/web/src/pages/settings/Panels.tsx
+--- a/apps/web/src/pages/settings/Panels.tsx
++++ b/apps/web/src/pages/settings/Panels.tsx
+@@ -323,7 +323,7 @@
+       aria-label={label}
+       min={field === 'days' ? 1 : 0}
+       max={field === 'days' ? 31 : 1000000000}
+-      style={{ width: field === 'days' ? '5rem' : '10rem', color: 'var(--txt)', background: 'var(--card)' }}
++      style={{ width: field === 'days' ? '5rem' : '10rem' }}
+       placeholder={field === 'qty' ? 'Belum ada target' : 'Hari'}
+       step="1"
+       disabled={!ready || busy}
+@@ -398,7 +398,7 @@
+             <input type="checkbox" checked={missing} onChange={(e) => setMissing(e.target.checked)} /> Belum ada target
+           </label>
+         </div>
+-        <div className="settings-table" style={{ overflow: 'auto', maxHeight: '60vh' }}>
++        <div className="settings-table target-line-scroll" style={{ overflow: 'auto', maxHeight: '60vh' }}>
+           <table>
+             <thead>
+               <tr>
+diff --git a/apps/web/src/app.css b/apps/web/src/app.css
+--- a/apps/web/src/app.css
++++ b/apps/web/src/app.css
+@@ -12,3 +12,27 @@
+   color: var(--tx);
+ }
+ #demo-login-form .fld + .fld { margin-top: 12px; }
++
++/* Native form controls inherit the dashboard palette in both themes. */
++:where(#root) :where(input:not([type]), input[type="text"], input[type="month"], input[type="date"], input[type="number"], input[type="search"], select, textarea) {
++  box-sizing: border-box;
++  min-height: 40px;
++  max-width: 100%;
++  padding: 7px 10px;
++  color: var(--tx);
++  background-color: var(--pan);
++  border: 1px solid var(--bd);
++  border-radius: 8px;
++  font: inherit;
++}
++#root :where(input, select, textarea, button, a):focus-visible {
++  outline: 2px solid var(--acc);
++  outline-offset: 2px;
++}
++.settings-tabs { align-items: center; }
++.settings-tabs label:has(input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
++.settings-tabs input[type="checkbox"] { accent-color: var(--acc); }
++.settings-editor h3 { scroll-margin-block-start: calc(var(--access-bar, 58px) + 24px); }
++.target-line-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--pan); }
++.settings-card header { flex-wrap: wrap; gap: 10px; }
++.department-tv { padding: clamp(12px, 2vw, 38px); }
+diff --git a/apps/web/src/App.tsx b/apps/web/src/App.tsx
+--- a/apps/web/src/App.tsx
++++ b/apps/web/src/App.tsx
+@@ -31,7 +31,7 @@
+   if (!location.hash && ['hub', 'monitoring-output'].includes(home)) route = { page: home as 'hub' };
+   // Perangkat kiosk hanya melihat line miliknya (port allowedRoute + pairedDevice).
+   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) {
+-    return <main id="view" key={me.now}>
++    return <main id="view" className="department-tv" key={`${me.screen}-${me.today}`}>
+       <h1>{me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'}</h1>
+       {me.screen === 'hub' ? <Hub /> : <Executive />}
+     </main>;
+diff --git a/apps/web/src/lib/useApi.ts b/apps/web/src/lib/useApi.ts
+--- a/apps/web/src/lib/useApi.ts
++++ b/apps/web/src/lib/useApi.ts
+@@ -10,7 +10,7 @@
+ }
+ 
+ /** GET data; url null = tidak memuat. Respons lama diabaikan bila url berganti (hindari balapan). */
+-export function useApi<T>(url: string | null): ApiState<T> {
++export function useApi<T>(url: string | null, refreshKey?: string): ApiState<T> {
+   const [state, setState] = useState<{ env: Envelope<T> | null; error: string; loading: boolean }>({
+     env: null,
+     error: '',
+@@ -30,6 +30,6 @@
+         if (id === seq.current) setState({ env: null, error: e instanceof ApiError ? e.message : 'Data gagal dimuat.', loading: false });
+       });
+   }, [url]);
+-  useEffect(load, [load]);
++  useEffect(load, [load, refreshKey]);
+   return { data: state.env?.data ?? null, status: state.env?.status ?? '', error: state.error, loading: state.loading, reload: load };
+ }
+diff --git a/apps/web/src/pages/Hub.tsx b/apps/web/src/pages/Hub.tsx
+--- a/apps/web/src/pages/Hub.tsx
++++ b/apps/web/src/pages/Hub.tsx
+@@ -260,8 +260,9 @@
+   const start = period === 'daily' ? day : rng.f;
+   const end = period === 'daily' ? day : rng.t;
+   const trendFrom = period === 'daily' ? (addD(day, -6) < MIN_D ? MIN_D : addD(day, -6)) : rng.f;
+-  const summary = useApi<Summary>(`/api/v3/reporting/summary/range?start=${start}&end=${end}&location=internal`);
+-  const trend = useApi<Trend>(`/api/v3/reporting/trend/range?start=${trendFrom}&end=${end}&location=internal`);
++  const refreshKey = me?.kind === 'device' ? me.now : undefined;
++  const summary = useApi<Summary>(`/api/v3/reporting/summary/range?start=${start}&end=${end}&location=internal`, refreshKey);
++  const trend = useApi<Trend>(`/api/v3/reporting/trend/range?start=${trendFrom}&end=${end}&location=internal`, refreshKey);
+   const rows: Row[] = SITES.map((site) => ({ site, ok: site === 'internal', s: site === 'internal' ? summary.data : null }));
+   const label = period === 'daily' ? fd(day) : rangeLabel(rng);
+   const tabs: [typeof period, string][] = [
+diff --git a/apps/web/src/pages/Executive.tsx b/apps/web/src/pages/Executive.tsx
+--- a/apps/web/src/pages/Executive.tsx
++++ b/apps/web/src/pages/Executive.tsx
+@@ -126,7 +126,8 @@
+ }
+ 
+ export function Executive() {
+-  const { can } = useAuth();
++  const { can, me } = useAuth();
++  const refreshKey = me?.kind === 'device' ? me.now : undefined;
+   const now = new Date(Date.now() + 7 * 3600 * 1000);
+   const [yr, setYr] = useState(now.getUTCFullYear());
+   const [mo, setMo] = useState(now.getUTCMonth()); // 0-based seperti mockup S.mo
+@@ -150,7 +151,7 @@
+ 
+   useEffect(() => {
+     void load();
+-  }, [load]);
++  }, [load, refreshKey]);
+ 
+   const note = (text: string): void => {
+     const el = document.getElementById('header-note');

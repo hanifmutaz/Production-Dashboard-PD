@@ -1357,16 +1357,16 @@ body:not(.kiosk) .page :is(.card,.exec-panel,.exec-empty,.settings-card,.setting
 /* ==== mockup <style id="industrial-velvet"> @539214 ==== */
 
 /* @import Google Fonts dihapus: aset eksternal (lihat BLOCKERS BLK-007) */
-:root{--bg:light-dark(#f4f5fb,#101418);--pan:light-dark(#fff,#181c21);--bd:light-dark(#e1e2ec,#343842);--tx:light-dark(#181c21,#e0e2e9);--dim:light-dark(#505568,#b9bdca);--acc:light-dark(#39305f,#c9c1ef);--act:light-dark(#eae7f5,#30294b);--hov:light-dark(#eae7f5,#30294b);--surface-radius:18px;--surface-shadow:0 4px 12px #15132b0b,0 12px 24px #15132b08;--velvet:#1a1438;--lime:#caee42}
+:root{--bg:light-dark(#f4f5fb,#101418);--pan:light-dark(#fff,#181c21);--bd:light-dark(#e1e2ec,#343842);--tx:light-dark(#181c21,#e0e2e9);--dim:light-dark(#505568,#b9bdca);--acc:light-dark(#39305f,#c9c1ef);--act:light-dark(#eae7f5,#30294b);--hov:light-dark(#eae7f5,#30294b);--surface-radius:18px;--surface-shadow:0 4px 12px #15132b0b,0 12px 24px #15132b08;--velvet:#1a1438;--action-fill:light-dark(#174b81,#9bc8ff);--action-ink:light-dark(#fff,#102942);--action-hover:light-dark(#123d6a,#b5d7ff);--action-pressed:light-dark(#0d3158,#80b6f5);--action-tint:light-dark(#eaf2fb,#20364e)}
 body{font-family:'Plus Jakarta Sans','DM Sans','Segoe UI',sans-serif;letter-spacing:.005em}
 .card,.panel,.settings-card,.kpi{border-radius:18px;box-shadow:var(--surface-shadow)}
 .kv,.kpi-value{font-weight:800;letter-spacing:0;font-variant-numeric:tabular-nums}.kv{font-size:clamp(22px,2.2vw,32px)}.hub-kpis .kv{font-size:clamp(20px,2.45cqi,30px)}
 .kpis{gap:10px;background:transparent;border:0;overflow:visible}.kpi{border:1px solid var(--bd)}
 .side{background:#1a1438;color:#e6deff;border:0;--dim:#c9c1ef;--tx:#fff;--acc:#fff;--act:#39305f;--hov:#30294b;--bd:#ffffff24;--logo:#fff;box-shadow:0 12px 28px #1a143833}
-.side .it{border-radius:14px}.side .it.cur,.side .it[aria-current="page"]{background:#fff;color:#1a1438}.side .brand .sidebar-toggle{color:#e6deff}.side .tag{color:#caee42}.side .sub{border-color:#ffffff24}
+.side .it{border-radius:14px}.side .it.cur,.side .it[aria-current="page"]{background:#fff;color:#1a1438}.side .brand .sidebar-toggle{color:#e6deff}.side .tag{color:#c5ddf7}.side .sub{border-color:#ffffff24}
 @media(min-width:901px){.side{margin:12px 0 12px 12px;top:12px;height:calc(100dvh - 24px);border-radius:24px}.rail .side{border-radius:36px}.rail .side .it{border-radius:50%;width:44px;margin-inline:auto}.main{padding-left:8px}}
 .hub-tabs,.tabbar{border-radius:999px;background:var(--act);padding:4px}.hub-tab,.tab{border-radius:999px}.hub-tab[aria-selected=true],.tab[aria-pressed=true]{background:var(--velvet);color:white}
-#custom-role-form,#device-form{display:grid;gap:12px}.velvet-role-layout{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,2fr);gap:14px}.velvet-role-list{display:grid;align-content:start;gap:9px}.velvet-role-list .sec{margin:0;padding:14px;border:1px solid var(--bd);border-radius:16px;background:var(--pan)}.velvet-role-list .sec:has([data-role-edit]:focus){outline:2px solid var(--acc)}.velvet-perms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.velvet-perms .ck{justify-content:space-between;gap:8px}.velvet-perms section{background:var(--bg);padding:12px;border-radius:14px}.velvet-perms h3{margin:0 0 8px;font-size:13px}.velvet-perms input[type=checkbox]{appearance:none;width:38px;height:22px;flex:none;border-radius:99px;background:#9296a5;position:relative;cursor:pointer;margin:0}.velvet-perms input:checked{background:#514477}.velvet-perms input:before{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .15s}.velvet-perms input:checked:before{transform:translateX(16px)}.velvet-device-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.velvet-device-grid .sec{display:grid;align-content:start;margin:0;padding:14px;border:1px solid var(--bd);border-radius:16px;background:var(--bg)}.velvet-device-icon{display:grid;place-items:center;background:var(--act);border-radius:12px;height:65px;color:var(--acc)}.velvet-action{background:#caee42!important;color:#1a1438!important;border-color:#caee42!important;border-radius:999px}.velvet-audit{margin-top:12px}.velvet-audit p{border-bottom:1px solid var(--bd);padding:8px 0;margin:0;overflow-wrap:anywhere}
+#custom-role-form,#device-form{display:grid;gap:12px}.velvet-role-layout{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,2fr);gap:14px}.velvet-role-list{display:grid;align-content:start;gap:9px}.velvet-role-list .sec{margin:0;padding:14px;border:1px solid var(--bd);border-radius:16px;background:var(--pan)}.velvet-role-list .sec:has([data-role-edit]:focus){outline:2px solid var(--acc)}.velvet-perms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.velvet-perms .ck{justify-content:space-between;gap:8px}.velvet-perms section{background:var(--bg);padding:12px;border-radius:14px}.velvet-perms h3{margin:0 0 8px;font-size:13px}.velvet-perms input[type=checkbox]{appearance:none;width:38px;height:22px;flex:none;border-radius:99px;background:#9296a5;position:relative;cursor:pointer;margin:0}.velvet-perms input:checked{background:var(--action-fill)}.velvet-perms input:checked:before{background:var(--action-ink)}.velvet-perms input:before{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .15s}.velvet-perms input:checked:before{transform:translateX(16px)}.velvet-device-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.velvet-device-grid .sec{display:grid;align-content:start;margin:0;padding:14px;border:1px solid var(--bd);border-radius:16px;background:var(--bg)}.velvet-device-icon{display:grid;place-items:center;background:var(--act);border-radius:12px;height:65px;color:var(--acc)}.velvet-action{border-radius:999px}.velvet-audit{margin-top:12px}.velvet-audit p{border-bottom:1px solid var(--bd);padding:8px 0;margin:0;overflow-wrap:anywhere}
 @media(max-width:650px){.velvet-role-layout,.velvet-perms{grid-template-columns:1fr}.velvet-role-list{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}}
 @media(hover:hover) and (prefers-reduced-motion:no-preference){.card:hover,.panel:hover,.settings-card:hover,.kpi:hover{transform:translateY(-3px);box-shadow:0 9px 24px #15132b18}.side .it:hover,.settings-nav-button:hover{transform:translateY(-2px)}.card,.panel,.settings-card,.kpi,.side .it,.settings-nav-button{transition:transform .18s,box-shadow .18s,background-color .18s}}
 @media(prefers-reduced-motion:reduce){.velvet-perms input:before{transition:none}}
@@ -1381,3 +1381,26 @@ body :is(td,.exec-target-pair dd,.exec-locations .exec-actual strong,.exec-row-p
 body :is(.exec-locations .exec-actual strong,.exec-row-progress strong,td strong,td b){font-weight:650!important}
 body :is(.kpi-unit,.kv small,.kpi-value small,.master-stat small,.exec-stats dd small,.exec-attention small){font-family:var(--font-data)!important;font-weight:500!important;letter-spacing:0!important}
 body :is(.hub-trend-tick,.bar-value,.hub-trend-tooltip-row b,svg text){font-family:var(--font-data)!important;font-variant-numeric:tabular-nums lining-nums!important}
+
+/* Interactive controls use the Hirose action palette across dashboard screens. */
+.btn:is(.pri,.velvet-action) {
+  background:var(--action-fill); border-color:var(--action-fill); color:var(--action-ink);
+}
+.btn:is(.pri,.velvet-action):enabled:hover {
+  background:var(--action-hover); border-color:var(--action-hover); color:var(--action-ink); filter:none;
+}
+.btn:is(.pri,.velvet-action):enabled:active {
+  background:var(--action-pressed); border-color:var(--action-pressed); color:var(--action-ink);
+}
+.hub-tab[aria-selected=true], .tab[aria-pressed=true] {
+  background:var(--action-fill); color:var(--action-ink);
+}
+.settings-tabs .btn[aria-pressed=true] {
+  background:var(--action-tint); color:var(--action-fill); border-color:var(--action-fill);
+}
+.btn:is(.pri,.velvet-action):disabled {
+  background:var(--bg); color:var(--dim); border-color:var(--bd); cursor:default; opacity:1;
+}
+.btn:focus-visible, .hub-tab:focus-visible, .tab:focus-visible, .velvet-perms input:focus-visible {
+  outline:2px solid var(--action-fill); outline-offset:3px;
+}
