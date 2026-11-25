@@ -61,10 +61,9 @@ export class AuthService {
     password: string,
     req: { requestId: string },
   ): Promise<{ token: string; expiresAt: Date; principal: Principal }> {
-    const { rows } = await this.pool.query(
-      `SELECT id, password_hash, failed_attempts, locked_until, active FROM users WHERE email = $1`,
-      [email],
-    );
+    const { rows } = await this.pool.query(`SELECT id, password_hash, failed_attempts, locked_until, active FROM users WHERE email = $1`, [
+      email,
+    ]);
     const user = rows[0];
     if (!user || user['active'] !== true) {
       await argon2.verify(await getDummyHash(), password).catch(() => false);

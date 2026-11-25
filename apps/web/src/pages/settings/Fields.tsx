@@ -148,7 +148,8 @@ export function Editor({
         <header>
           <h3 ref={heading} tabIndex={-1}>
             {record['id'] ? 'Edit ' : 'Tambah '}
-            {label}{section === 'lines' && identity ? ` · ${String(identity)}` : ''}
+            {label}
+            {section === 'lines' && identity ? ` · ${String(identity)}` : ''}
           </h3>
           <button className="btn" type="button" onClick={onCancel}>
             Batal

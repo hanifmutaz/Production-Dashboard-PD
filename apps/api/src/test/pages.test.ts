@@ -156,7 +156,12 @@ describe('akses: custom role & perangkat', () => {
       permissions: ['dashboard.view'],
       menus: ['monitoring-output', 'lines'],
     });
-    await admin.post('/api/v3/access/users', { email: 'meet1@example.test', display_name: 'Meet', password: 'password-panjang-1', role: 'meeting' });
+    await admin.post('/api/v3/access/users', {
+      email: 'meet1@example.test',
+      display_name: 'Meet',
+      password: 'password-panjang-1',
+      role: 'meeting',
+    });
     const meet = await loginAs(h, 'meet1', 'password-panjang-1');
     expect((await meet.get('/api/v3/auth/me')).body.data.menus).toEqual(['lines', 'monitoring-output']);
     expect((await admin.delete('/api/v3/access/roles/meeting')).status).toBe(409);
@@ -204,7 +209,10 @@ it.each(['hub', 'executive'])('TV Departemen %s hanya membaca layar terdaftar sa
   const pair = await request(h.app).post('/api/v3/auth/pair').send({ code: issued.body.data.code, name: 'Browser TV' });
   expect(pair.status).toBe(201);
   const token = 'Device ' + pair.body.data.token;
-  const get = (url: string) => request(h.app).get('/api/v3' + url).set('authorization', token);
+  const get = (url: string) =>
+    request(h.app)
+      .get('/api/v3' + url)
+      .set('authorization', token);
   expect((await get('/auth/me')).body.data).toMatchObject({ screen, line: null, menus: [screen] });
   const range = '?start=2026-11-24&end=2026-11-24&location=internal';
   expect((await get('/reporting/summary/range' + range)).status).toBe(screen === 'hub' ? 200 : 403);

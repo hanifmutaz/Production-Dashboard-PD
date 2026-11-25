@@ -39,7 +39,11 @@ function makePlot(width: number, days: number, series: readonly TrendSeries[]): 
 // Tag custom element yang sama dengan mockup agar aturan CSS `hub-output-trend{...}` berlaku.
 const HubEl = 'hub-output-trend' as unknown as 'div';
 
-export function HubTrend({ days, series, onPick }: {
+export function HubTrend({
+  days,
+  series,
+  onPick,
+}: {
   readonly days: readonly string[];
   readonly series: readonly TrendSeries[];
   readonly onPick?: (date: string) => void;

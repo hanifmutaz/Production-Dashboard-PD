@@ -12,6 +12,11 @@ import { Editor, ListTable, type Lookups } from './Fields';
 import { MENU_OPTIONS, SPEC, type Field } from './spec';
 import { useSaveSetting } from './Settings';
 
+/** Salinan objek tanpa satu key (pengganti `delete obj[key]` yang dilarang lint). */
+function omitKey<T>(obj: Readonly<Record<string, T>>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== key));
+}
+
 const errText = (e: unknown, fallback = 'Gagal menyimpan.'): string =>
   e instanceof ApiError ? e.message : e instanceof Error ? e.message : fallback;
 
@@ -247,11 +252,9 @@ function MonthTargets({
   const edit = (id: string, changes: Partial<TargetDraft>) => {
     const original = baseline(id);
     const next = { ...value(id), ...changes };
-    setDrafts((old) => {
-      const copy = { ...old, [id]: next };
-      if (next.qty === original.qty && next.days === original.days && next.note === original.note) delete copy[id];
-      return copy;
-    });
+    setDrafts((old) =>
+      next.qty === original.qty && next.days === original.days && next.note === original.note ? omitKey(old, id) : { ...old, [id]: next },
+    );
   };
   const pending = Object.entries(drafts);
   const ready = Boolean(plan.data && master.data && calendar.data) && !plan.loading && !master.loading && !calendar.loading;
@@ -285,11 +288,7 @@ function MonthTargets({
           await api.put('/api/v3/planning/line', { ...body, line_code: current, work_days: Number(d.days), note: d.note });
         }
         completed += 1;
-        setDrafts((old) => {
-          const copy = { ...old };
-          delete copy[id];
-          return copy;
-        });
+        setDrafts((old) => omitKey(old, id));
       }
       setMessage([`${completed} target disimpan.`, false]);
     } catch (e) {
@@ -306,13 +305,7 @@ function MonthTargets({
         type="button"
         disabled={busy}
         aria-label={`Batalkan isian ${id.slice(id.indexOf(':') + 1)}`}
-        onClick={() =>
-          setDrafts((old) => {
-            const copy = { ...old };
-            delete copy[id];
-            return copy;
-          })
-        }
+        onClick={() => setDrafts((old) => omitKey(old, id))}
       >
         Batal
       </button>
@@ -370,7 +363,9 @@ function MonthTargets({
               {SITES.map((site) => (
                 <tr key={site}>
                   <th scope="row">{siteName(site)}</th>
-                  <td>{site === 'internal' || saved.has('loc:' + site) ? input('loc:' + site, `Target ${siteName(site)}`, 'qty') : 'On Hold'}</td>
+                  <td>
+                    {site === 'internal' || saved.has('loc:' + site) ? input('loc:' + site, `Target ${siteName(site)}`, 'qty') : 'On Hold'}
+                  </td>
                   <td>{undo('loc:' + site)}</td>
                 </tr>
               ))}
@@ -502,7 +497,7 @@ export function UsersPanel() {
             try {
               if (rec) {
                 await api.patch(`/api/v3/access/users/${rec.id}`, {
-                  ...(rec.email !== v['email'] ? {email: v['email']} : {}),
+                  ...(rec.email !== v['email'] ? { email: v['email'] } : {}),
                   display_name: v['name'],
                   role: v['role'],
                   locations,
@@ -546,7 +541,9 @@ export function UsersPanel() {
           if (!u) return;
           api
             .patch(`/api/v3/access/users/${u.id}`, { active: !u.active, version: u.version })
-            .then(() => (setMsg([`Akun ${u.email ?? u.display_name} ${u.active ? 'dinonaktifkan' : 'diaktifkan'}.`, false]), users.reload()))
+            .then(
+              () => (setMsg([`Akun ${u.email ?? u.display_name} ${u.active ? 'dinonaktifkan' : 'diaktifkan'}.`, false]), users.reload()),
+            )
             .catch((e: unknown) => setMsg([errText(e), true]));
         }}
       />
@@ -737,11 +734,18 @@ interface Devices {
     id: number;
     name: string;
     location: string | null;
-    line_code: string | null; screen: DeviceScreen;
+    line_code: string | null;
+    screen: DeviceScreen;
     last_seen_at: string | null;
     revoked_at: string | null;
   }[];
-  readonly pending: readonly { id: number; line_code: string | null; screen: DeviceScreen; device_name: string | null; expires_at: string }[];
+  readonly pending: readonly {
+    id: number;
+    line_code: string | null;
+    screen: DeviceScreen;
+    device_name: string | null;
+    expires_at: string;
+  }[];
 }
 
 export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
@@ -750,10 +754,10 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
   const [code, setCode] = useState<{ code: string; expiresAt: string } | null>(null);
   const [msg, setMsg] = useState<[string, boolean]>(['', false]);
   const [revoking, setRevoking] = useState<number | null>(null);
-  const revoked = (dev.data?.devices ?? []).filter(d => d.revoked_at);
+  const revoked = (dev.data?.devices ?? []).filter((d) => d.revoked_at);
   const stamp = (value: string) => new Date(value).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
   const screenLabel = (d: { screen: DeviceScreen; line_code: string | null }) =>
-    d.screen === 'line' ? d.line_code ?? 'Per Line' : deviceScreens[d.screen];
+    d.screen === 'line' ? (d.line_code ?? 'Per Line') : deviceScreens[d.screen];
   const revoke = async (d: Devices['devices'][number]) => {
     if (revoking !== null) return;
     setRevoking(d.id);
@@ -793,20 +797,32 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
           </label>
           <label className="fld">
             Tampilan perangkat
-            <select value={screen} onChange={(e) => {setScreen(e.target.value as DeviceScreen); setCode(null);}}>
-              {Object.entries(deviceScreens).map(([key,label]) => <option key={key} value={key}>{label}</option>)}
-            </select>
-          </label>
-          {screen === 'line' && <label className="fld">
-            Lokasi / Line
-            <select name="line" required>
-              {lines.map((l) => (
-                <option key={l} value={l}>
-                  {siteName('internal')} · {l}
+            <select
+              value={screen}
+              onChange={(e) => {
+                setScreen(e.target.value as DeviceScreen);
+                setCode(null);
+              }}
+            >
+              {Object.entries(deviceScreens).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
                 </option>
               ))}
             </select>
-          </label>}
+          </label>
+          {screen === 'line' && (
+            <label className="fld">
+              Lokasi / Line
+              <select name="line" required>
+                {lines.map((l) => (
+                  <option key={l} value={l}>
+                    {siteName('internal')} · {l}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button className="btn velvet-action">Generate pairing code</button>
         </form>
         {code ? (
@@ -819,36 +835,98 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
       </section>
       <section className="settings-card settings-list">
         <h2>Perangkat terdaftar</h2>
-        {dev.error && <p role="alert">{dev.error} <button className="btn" onClick={dev.reload}>Muat ulang</button></p>}
+        {dev.error && (
+          <p role="alert">
+            {dev.error}{' '}
+            <button className="btn" onClick={dev.reload}>
+              Muat ulang
+            </button>
+          </p>
+        )}
         {dev.loading && <p role="status">Memuat perangkat…</p>}
-        {dev.data && <>
-          <div className="settings-table"><table aria-label="Perangkat aktif dan menunggu pairing">
-            <thead><tr><th>Perangkat</th><th>Tampilan</th><th>Status</th><th>Waktu (WIB)</th><th>Aksi</th></tr></thead>
-            <tbody>
-              {dev.data.devices.filter(d => !d.revoked_at).map(d => <tr key={d.id}>
-                <th scope="row">{d.name} <small>#{d.id}</small></th>
-                <td>{screenLabel(d)}</td><td>Akses aktif</td>
-                <td>{d.last_seen_at ? 'Terakhir diakses ' + stamp(d.last_seen_at) : 'Belum diakses'}</td>
-                <td><button className="btn" type="button" data-device-revoke={d.id}
-                  disabled={revoking !== null || dev.loading} onClick={() => void revoke(d)}>Cabut akses</button></td>
-              </tr>)}
-              {dev.data.pending.map(p => <tr key={'pending-' + p.id}>
-                <th scope="row">{p.device_name ?? 'Perangkat baru'}</th><td>{screenLabel(p)}</td>
-                <td>Menunggu pairing</td><td>Kode berlaku sampai {stamp(p.expires_at)}</td><td>—</td>
-              </tr>)}
-              {!dev.data.devices.some(d => !d.revoked_at) && !dev.data.pending.length &&
-                <tr><td colSpan={5}>Belum ada perangkat aktif atau menunggu pairing.</td></tr>}
-            </tbody>
-          </table></div>
-          {revoked.length > 0 && <details>
-            <summary>Riwayat akses dicabut ({revoked.length})</summary>
-            <div className="settings-table"><table aria-label="Riwayat akses dicabut">
-              <thead><tr><th>Perangkat</th><th>Tampilan</th><th>Dicabut pada (WIB)</th></tr></thead>
-              <tbody>{revoked.map(d => <tr key={d.id}><th scope="row">{d.name} <small>#{d.id}</small></th>
-                <td>{screenLabel(d)}</td><td>{stamp(d.revoked_at ?? '')}</td></tr>)}</tbody>
-            </table></div>
-          </details>}
-        </>}
+        {dev.data && (
+          <>
+            <div className="settings-table">
+              <table aria-label="Perangkat aktif dan menunggu pairing">
+                <thead>
+                  <tr>
+                    <th>Perangkat</th>
+                    <th>Tampilan</th>
+                    <th>Status</th>
+                    <th>Waktu (WIB)</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dev.data.devices
+                    .filter((d) => !d.revoked_at)
+                    .map((d) => (
+                      <tr key={d.id}>
+                        <th scope="row">
+                          {d.name} <small>#{d.id}</small>
+                        </th>
+                        <td>{screenLabel(d)}</td>
+                        <td>Akses aktif</td>
+                        <td>{d.last_seen_at ? 'Terakhir diakses ' + stamp(d.last_seen_at) : 'Belum diakses'}</td>
+                        <td>
+                          <button
+                            className="btn"
+                            type="button"
+                            data-device-revoke={d.id}
+                            disabled={revoking !== null || dev.loading}
+                            onClick={() => void revoke(d)}
+                          >
+                            Cabut akses
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  {dev.data.pending.map((p) => (
+                    <tr key={'pending-' + p.id}>
+                      <th scope="row">{p.device_name ?? 'Perangkat baru'}</th>
+                      <td>{screenLabel(p)}</td>
+                      <td>Menunggu pairing</td>
+                      <td>Kode berlaku sampai {stamp(p.expires_at)}</td>
+                      <td>—</td>
+                    </tr>
+                  ))}
+                  {!dev.data.devices.some((d) => !d.revoked_at) && !dev.data.pending.length && (
+                    <tr>
+                      <td colSpan={5}>Belum ada perangkat aktif atau menunggu pairing.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {revoked.length > 0 && (
+              <details>
+                <summary>Riwayat akses dicabut ({revoked.length})</summary>
+                <div className="settings-table">
+                  <table aria-label="Riwayat akses dicabut">
+                    <thead>
+                      <tr>
+                        <th>Perangkat</th>
+                        <th>Tampilan</th>
+                        <th>Dicabut pada (WIB)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revoked.map((d) => (
+                        <tr key={d.id}>
+                          <th scope="row">
+                            {d.name} <small>#{d.id}</small>
+                          </th>
+                          <td>{screenLabel(d)}</td>
+                          <td>{stamp(d.revoked_at ?? '')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </>
+        )}
       </section>
     </>
   );

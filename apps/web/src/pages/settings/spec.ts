@@ -1,7 +1,21 @@
 // Port SETTINGS_SECTIONS / SETTINGS_GROUPS / SETTINGS_SPEC mockup.
 // Field: [key, label, type, optional?, options|min, max]
 export type FieldType =
-  'text' | 'email' | 'code' | 'color' | 'enum' | 'site' | 'line' | 'product' | 'num' | 'int' | 'bool' | 'month' | 'date' | 'time' | 'password';
+  | 'text'
+  | 'email'
+  | 'code'
+  | 'color'
+  | 'enum'
+  | 'site'
+  | 'line'
+  | 'product'
+  | 'num'
+  | 'int'
+  | 'bool'
+  | 'month'
+  | 'date'
+  | 'time'
+  | 'password';
 export type Field = readonly [string, string, FieldType, boolean?, (readonly (readonly [string, string])[] | number)?, number?];
 
 export const CATEGORIES = ['Machine', 'Man', 'Material', 'Method', 'Other'] as const;
@@ -295,7 +309,11 @@ export function cleanField(field: Field, value: unknown): Check {
     line: /^[a-zA-Z0-9_-]{1,40}$/,
   };
   const p = patterns[type];
-  if ((p && !p.test(s)) || (type === 'enum' && Array.isArray(opt) && opt.length && !opt.some(([k]) => k === s)) || s.length > (type === 'email' ? 254 : 130))
+  if (
+    (p && !p.test(s)) ||
+    (type === 'enum' && Array.isArray(opt) && opt.length && !opt.some(([k]) => k === s)) ||
+    s.length > (type === 'email' ? 254 : 130)
+  )
     return { error: `${label} tidak valid.` };
   if (type === 'password' && s.length < 10) return { error: `${label.split(' (')[0]} minimal 10 karakter.` };
   return { value: type === 'code' && field[0] !== 'username' ? s.toUpperCase() : s };

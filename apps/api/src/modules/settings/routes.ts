@@ -17,8 +17,10 @@ export function settingsRoutes(pool: DbPool, svc: SettingsService): Router {
   r.get('/', requirePermission('dashboard.view'), async (req, res, next) => {
     try {
       const screen = req.principal?.screen;
-      const filter = screen === 'hub' || screen === 'executive'
-        ? " WHERE key IN ('config.general', 'config.display', 'config.kpi', 'config.alerts')" : '';
+      const filter =
+        screen === 'hub' || screen === 'executive'
+          ? " WHERE key IN ('config.general', 'config.display', 'config.kpi', 'config.alerts')"
+          : '';
       const { rows } = await pool.query(`SELECT key, value, version, updated_at FROM settings${filter} ORDER BY key`);
       res.json({ data: rows, status: 'ok' });
     } catch (e) {

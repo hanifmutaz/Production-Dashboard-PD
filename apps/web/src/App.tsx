@@ -31,10 +31,12 @@ export function App() {
   if (!location.hash && ['hub', 'monitoring-output'].includes(home)) route = { page: home as 'hub' };
   // Perangkat kiosk hanya melihat line miliknya (port allowedRoute + pairedDevice).
   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) {
-    return <main id="view" className="department-tv" key={`${me.screen}-${me.today}`}>
-      <h1>{me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'}</h1>
-      {me.screen === 'hub' ? <Hub /> : <Executive />}
-    </main>;
+    return (
+      <main id="view" className="department-tv" key={`${me.screen}-${me.today}`}>
+        <h1>{me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'}</h1>
+        {me.screen === 'hub' ? <Hub /> : <Executive />}
+      </main>
+    );
   }
   if (me.kind === 'device') route = { page: 'line', line: me.line ?? '' };
   else if (!allowed(routeKey(route)) || (route.page === 'export' && !can('export.run'))) {

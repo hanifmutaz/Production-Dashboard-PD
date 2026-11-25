@@ -52,7 +52,9 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const tv = me?.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive');
   useEffect(() => {
     if (!tv) return;
-    const timer = window.setInterval(() => { void refresh().catch(() => undefined); }, 60_000);
+    const timer = window.setInterval(() => {
+      void refresh().catch(() => undefined);
+    }, 60_000);
     return () => window.clearInterval(timer);
   }, [tv, refresh]);
 

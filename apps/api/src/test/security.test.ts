@@ -70,7 +70,12 @@ describe('otorisasi per role (INV-004)', () => {
       menus: ['monitoring'],
     });
     expect(saved.status).toBe(200);
-    await admin.post('/api/v3/access/users', { email: 'exp1@example.test', display_name: 'Exp', password: 'password-panjang-1', role: 'exporter' });
+    await admin.post('/api/v3/access/users', {
+      email: 'exp1@example.test',
+      display_name: 'Exp',
+      password: 'password-panjang-1',
+      role: 'exporter',
+    });
     const exp = await loginAs(h, 'exp1', 'password-panjang-1');
     expect(
       (

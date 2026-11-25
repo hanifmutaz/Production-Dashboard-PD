@@ -15,7 +15,10 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
 
   r.post('/login', loginLimiter, async (req, res, next) => {
     try {
-      const b = parseInput(z.object({ email: z.string().trim().toLowerCase().max(254).email(), password: z.string().min(1).max(200) }), req.body);
+      const b = parseInput(
+        z.object({ email: z.string().trim().toLowerCase().max(254).email(), password: z.string().min(1).max(200) }),
+        req.body,
+      );
       const { token, expiresAt, principal } = await auth.login(b.email, b.password, req);
       res.cookie(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'strict', secure: opts.cookieSecure, expires: expiresAt, path: '/' });
       res.json({
