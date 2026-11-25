@@ -2,9 +2,10 @@
 import { useState, type ReactNode } from 'react';
 import type { LineDayMetrics, LineStatus, SummaryTotals } from '@v3/shared';
 import { AchievementValue, Chp, LocTabs, M4, PageLead, SiteLegend, Soon, Tcard, useBand, type SiteCount } from '../components/common';
+import { HubTrend } from '../components/HubTrend';
 import { achievementLabel } from '../lib/achievement';
 import { useAuth } from '../lib/auth';
-import { addD, addM, lastOfMonth, MIN_M, pad } from '../lib/dates';
+import { addD, addM, lastOfMonth, MIN_M } from '../lib/dates';
 import { fd, fmt, MON, P } from '../lib/format';
 import { Icon } from '../lib/icons';
 import { achievedMetric, useConfig } from '../lib/kpi';
@@ -102,127 +103,6 @@ function Step({
         <Icon name="next" size={16} />
       </button>
     </div>
-  );
-}
-
-/** Port masterTrend(series, compact). series per tanggal bulan; null = setelah batas data. */
-function TrendPlot({
-  series,
-  compact,
-  selected,
-  month,
-  onPick,
-}: {
-  readonly series: readonly ({ pl: number; ac: number } | null)[];
-  readonly compact: boolean;
-  readonly selected: number;
-  readonly month: string;
-  readonly onPick: (day: number) => void;
-}) {
-  const band = useBand();
-  const w = compact ? 400 : 800;
-  const h = compact ? 210 : 250;
-  const l = compact ? 41 : 61;
-  const r = compact ? 12 : 18;
-  const t = 17;
-  const b = 28;
-  const data = series.filter((d): d is { pl: number; ac: number } => d !== null);
-  if (!data.length) return null;
-  const span = Math.max(1, data.length - 1);
-  const peak = Math.max(1, ...data.map((d) => Math.max(d.pl, d.ac)));
-  const quarter = peak / 4;
-  const power = 10 ** Math.floor(Math.log10(quarter));
-  const step = Math.ceil(quarter / power) * power;
-  const max = 4 * step;
-  const x = (i: number): number => l + ((w - l - r) * i) / span;
-  const y = (v: number): number => h - b - ((h - b - t) * v) / max;
-  const base = y(0);
-  const points = (k: 'pl' | 'ac'): string => data.map((d, i) => `${x(i)},${y(d[k])}`).join(' ');
-  const grad = compact ? 'master-area-small' : 'master-area';
-  const interval = compact ? Math.ceil(span / 4) : Math.ceil(span / 9);
-  const at = data[selected];
-  const bandW = (w - l - r) / span;
-  return (
-    <svg
-      className={`master-trend-plot${compact ? ' compact' : ''}`}
-      viewBox={`0 0 ${w} ${h}`}
-      role="img"
-      aria-label="Tren harian output plan dan actual"
-    >
-      <defs>
-        <linearGradient id={grad} x1="0" y1="0" x2="0" y2="100%">
-          <stop stopColor="var(--acc)" stopOpacity=".2" />
-          <stop offset="1" stopColor="var(--acc)" stopOpacity=".015" />
-        </linearGradient>
-      </defs>
-      {[0, 1, 2, 3, 4].map((tick) => {
-        const v = tick * step;
-        const yy = y(v);
-        return (
-          <g key={tick}>
-            <line x1={l} x2={w - r} y1={yy} y2={yy} stroke="var(--bd)" />
-            <text x={l - 8} y={yy + 4} textAnchor="end">
-              {v >= 1000 ? `${fmt(v / 1000)}k` : fmt(v)}
-            </text>
-          </g>
-        );
-      })}
-      {data.map((_, i) =>
-        i === 0 || i === span || (i % interval === 0 && span - i >= Math.max(2, interval * 0.65)) ? (
-          <text key={`x${i}`} x={x(i)} y={h - 5} textAnchor="middle" className={i === selected ? 'plot-selected' : ''}>
-            {i + 1}
-          </text>
-        ) : null,
-      )}
-      <polygon points={`${l},${base} ${points('ac')} ${x(data.length - 1)},${base}`} fill={`url(#${grad})`} />
-      <polyline
-        points={points('pl')}
-        fill="none"
-        stroke="var(--plot-plan)"
-        strokeWidth="1.6"
-        strokeDasharray="5 4"
-        strokeLinejoin="round"
-      />
-      <polyline points={points('ac')} fill="none" stroke="var(--acc)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-      {data.map((d, i) => {
-        const c = band(pctOf(d.ac, d.pl));
-        return c ? <circle key={`c${i}`} className={c} cx={x(i)} cy={y(d.ac)} r="2.7" fill="currentColor" /> : null;
-      })}
-      {at ? (
-        <>
-          <line x1={x(selected)} x2={x(selected)} y1={t} y2={base} stroke="var(--acc)" strokeWidth="1" opacity=".5" />
-          <circle
-            cx={x(selected)}
-            cy={y(at.ac)}
-            r="4.5"
-            fill="currentColor"
-            className={band(pctOf(at.ac, at.pl))}
-            stroke="var(--pan)"
-            strokeWidth="2"
-          />
-        </>
-      ) : null}
-      {data.map((d, i) => {
-        const left = Math.max(l - 5, x(i) - bandW / 2);
-        const right = Math.min(w, x(i) + bandW / 2);
-        return (
-          <rect
-            key={`r${i}`}
-            className="plot-day"
-            data-master-day={i + 1}
-            x={left}
-            width={right - left}
-            height={h}
-            fill="transparent"
-            onClick={() => onPick(i + 1)}
-          >
-            <title>
-              {fd(`${month}-${pad(i + 1)}`)} · Actual {fmt(d.ac)} pcs · Plan {fmt(d.pl)} pcs
-            </title>
-          </rect>
-        );
-      })}
-    </svg>
   );
 }
 
@@ -379,13 +259,11 @@ export function Master({ site }: { readonly site: string }) {
     );
   }
 
-  const series = (trend.data?.days ?? []).map((d) => (d.date > limit ? null : { pl: d.plan, ac: d.actual }));
-  const selected = Number(day.slice(8)) - 1;
+  const trendDays = (trend.data?.days ?? []).filter((point) => point.date >= `${month}-01` && point.date <= limit);
   const m = monthSum.data;
   const d = daySum.data;
   const dayPct = d ? pctOf(d.output_actual, d.output_plan) : null;
   const monthLabel = `${MON[Number(month.slice(5)) - 1] ?? ''} ${month.slice(0, 4)}`;
-  const daysShown = series.filter(Boolean).length;
   const stopHref = `#stoptime-${site}`;
   const rows = metrics.data?.rows ?? [];
   const statusMap = new Map((current.data?.lines ?? []).map((l) => [l.line, l.status === 'running']));
@@ -477,7 +355,7 @@ export function Master({ site }: { readonly site: string }) {
               <div>
                 <h2>Tren Output Harian</h2>
                 <div className="master-caption">
-                  1–{daysShown} {monthLabel.split(' ')[0]} · pcs
+                  {fd(`${month}-01`)} sampai {fd(limit)} · pcs
                 </div>
               </div>
               <Step scope="month" label={monthLabel} prev={month > MIN_M} next={month < today.slice(0, 7)} onStep={stepMonth} />
@@ -496,8 +374,12 @@ export function Master({ site }: { readonly site: string }) {
                 </span>
               )}
             </div>
-            <TrendPlot series={series} compact={false} selected={selected} month={month} onPick={(n) => setDay(`${month}-${pad(n)}`)} />
-            <TrendPlot series={series} compact selected={selected} month={month} onPick={(n) => setDay(`${month}-${pad(n)}`)} />
+            <HubTrend
+              key={month}
+              days={trendDays.map((point) => point.date)}
+              series={[{ site, name: siteName(site), values: trendDays.map((point) => (point.hasData ? point.actual : null)) }]}
+              onPick={setDay}
+            />
           </section>
           <div className="master-loss-stack">
             {lossPanel('Stoptime 4M — Bulanan', m?.stoptime_4m ?? [0, 0, 0, 0, 0])}

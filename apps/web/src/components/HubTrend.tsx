@@ -39,7 +39,11 @@ function makePlot(width: number, days: number, series: readonly TrendSeries[]): 
 // Tag custom element yang sama dengan mockup agar aturan CSS `hub-output-trend{...}` berlaku.
 const HubEl = 'hub-output-trend' as unknown as 'div';
 
-export function HubTrend({ days, series }: { readonly days: readonly string[]; readonly series: readonly TrendSeries[] }) {
+export function HubTrend({ days, series, onPick }: {
+  readonly days: readonly string[];
+  readonly series: readonly TrendSeries[];
+  readonly onPick?: (date: string) => void;
+}) {
   const canvas = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -103,6 +107,13 @@ export function HubTrend({ days, series }: { readonly days: readonly string[]; r
       e.preventDefault();
       e.stopPropagation();
       clear();
+    } else if (onPick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      const date = days[cur];
+      if (date) {
+        inspect(cur, true);
+        onPick(date);
+      }
     } else if (next !== undefined) {
       e.preventDefault();
       inspect(next, true);
@@ -251,6 +262,8 @@ export function HubTrend({ days, series }: { readonly days: readonly string[]; r
             clear();
             return;
           }
+          const date = days[i];
+          if (date) onPick?.(date);
           setPinned(true);
           inspect(i, true);
         }}
