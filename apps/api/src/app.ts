@@ -129,7 +129,7 @@ export function createApp(deps: AppDeps): Express {
   app.use('/api/v3/export', exportRoutes(reporting, executive, deps.dashboard));
 
   // Web SPA (hash router): file statis + index.html untuk path non-API.
-  const webDir = deps.webDistDir;
+  const webDir = deps.webDistDir ? path.resolve(deps.webDistDir) : undefined;
   if (webDir && existsSync(path.join(webDir, 'index.html'))) {
     app.use(express.static(webDir, { index: 'index.html', maxAge: '1h' }));
     app.get(/^\/(?!api\/|healthz|readyz).*/, (_req, res) => {
