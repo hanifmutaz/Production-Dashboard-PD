@@ -7,6 +7,7 @@ import { lineCode, month, versionField, year } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
 import { recordAudit } from '../audit/auditService.js';
+import { serializeTargetRow } from './serialize.js';
 
 export function planningRoutes(pool: DbPool): Router {
   const r = Router();
@@ -22,7 +23,7 @@ export function planningRoutes(pool: DbPool): Router {
         `SELECT line_code, year, month, target, work_days, note, version FROM line_targets WHERE year = $1 AND month = $2 ORDER BY line_code`,
         [q.year, q.month],
       );
-      res.json({ data: { locations: locations.rows, lines: lines.rows }, status: 'ok' });
+      res.json({ data: { locations: locations.rows.map(serializeTargetRow), lines: lines.rows.map(serializeTargetRow) }, status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -60,7 +61,7 @@ export function planningRoutes(pool: DbPool): Router {
         });
         return saved;
       });
-      res.json({ data: row, status: 'ok' });
+      res.json({ data: serializeTargetRow(row), status: 'ok' });
     } catch (e) {
       next(e);
     }

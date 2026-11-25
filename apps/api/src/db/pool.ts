@@ -21,8 +21,27 @@ export interface DbPool extends Queryable {
   end(): Promise<void>;
 }
 
+const NUMERIC_OID = 1700;
+
+/** Parser NUMERIC → number. Nilai non-finite dikembalikan apa adanya (string) agar tidak jadi NaN diam-diam. */
+export function parseNumeric(value: string): number | string {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : value;
+}
+
+/**
+ * pg mengembalikan NUMERIC sebagai string. Di DB dashboard (target, cycle_time) itu membuat `a + b` menjadi
+ * penggabungan teks di frontend. pg-mem mengembalikan number, jadi bug ini tidak terlihat di tes emulator.
+ * Hanya dipasang pada pool dashboard (bukan global) supaya perilaku pool ConMas tidak berubah.
+ */
+export const dashboardTypes = {
+  getTypeParser(oid: number, format?: 'text' | 'binary') {
+    return oid === NUMERIC_OID ? parseNumeric : pg.types.getTypeParser(oid, format as 'text');
+  },
+};
+
 export function createDashboardPool(connectionString: string): DbPool {
-  return new pg.Pool({ connectionString, max: 10 }) as unknown as DbPool;
+  return new pg.Pool({ connectionString, max: 10, types: dashboardTypes }) as unknown as DbPool;
 }
 
 /** Transaksi pendek; tidak boleh ada panggilan jaringan lain di dalam fn. */

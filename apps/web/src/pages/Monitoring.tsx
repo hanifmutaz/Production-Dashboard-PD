@@ -156,7 +156,7 @@ export function Monitoring({ site }: { readonly site: string }) {
         (metrics.data?.rows ?? []).filter((r) => r.line === l.line_code && r.date).map((r) => [Number(r.date?.slice(8)), r]),
       );
       const t = targetBy.get(l.line_code);
-      const monthly = t ? t.target : null;
+      const monthly = t ? Number(t.target) : null; // Number(): tahan terhadap target yang datang sebagai string
       const days = t ? t.work_days : workDays;
       const dailyTarget = monthly !== null && days ? monthly / days : null;
       const actualList = [...daily.values()].filter((r) => r.reports > 0);
