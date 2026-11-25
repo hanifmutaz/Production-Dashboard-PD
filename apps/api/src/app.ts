@@ -46,6 +46,7 @@ export interface AppDeps {
   readonly logger?: Logger;
   readonly clock?: Clock;
   /** Folder hasil build web (apps/web/dist). Bila ada, disajikan dari server yang sama. */
+  readonly productionModeFrom: string;
   readonly webDistDir?: string;
 }
 
@@ -78,7 +79,7 @@ export function createApp(deps: AppDeps): Express {
   app.use(cookieParser());
 
   const linesRepo = new LinesRepository(deps.dashboard);
-  const cols = new ColumnSql(deps.reportColumns, deps.availableColumns);
+  const cols = new ColumnSql(deps.reportColumns, deps.availableColumns, deps.productionModeFrom);
   const conmasRepo = new ConmasRepository(deps.conmas, cols);
   const settingsService = new SettingsService(deps.dashboard, {
     staleThresholdMin: deps.shift.lineNotRunningThresholdMin,

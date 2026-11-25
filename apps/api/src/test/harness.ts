@@ -68,6 +68,7 @@ export async function createHarness(opts: { now?: number; subcontEnabled?: boole
   );
   const now = opts.now ?? DEFAULT_NOW;
   const app = createApp({
+    productionModeFrom: '2026-11-25',
     dashboard,
     conmas,
     reportColumns: rc,

@@ -3,11 +3,17 @@
 import type { ReportColumns } from '../../columns/reportColumns.js';
 import type { ConmasReader } from '../../db/conmas.js';
 
+import { parentCodePattern, reinspectPattern } from '../masterData/lineCodes.js';
+import { z } from 'zod';
+
 export class ColumnSql {
   constructor(
     readonly rc: ReportColumns,
     private readonly available: ReadonlySet<string>,
-  ) {}
+    private readonly productionModeFrom: string,
+  ) {
+    z.iso.date().parse(productionModeFrom);
+  }
 
   get view(): string {
     return `"${this.rc.VIEW}"`;
@@ -48,8 +54,17 @@ export class ColumnSql {
     return `DATE(${this.mustRef(this.rc.COLS.tanggal)})`;
   }
 
-  get lineExpr(): string {
+  get productionModePredicate(): string {
+    const mode = `NULLIF(LOWER(TRIM(${this.mustRef(this.rc.COLS.production_mode)}::text)), '')`;
+    return `(${this.dateExpr} IS NOT NULL AND (${mode} = 'true' OR (${mode} IS NULL AND ${this.dateExpr} < '${this.productionModeFrom}'::date)) AND ${this.lineExpr} ~ '${parentCodePattern}' AND NOT (LOWER(${this.rawLine}) ~ '${reinspectPattern}'))`;
+  }
+
+  private get rawLine(): string {
     return `TRIM(${this.mustRef(this.rc.COLS.line)}::text)`;
+  }
+
+  get lineExpr(): string {
+    return `regexp_replace(${this.rawLine}, '[A-Za-z]$', '')`;
   }
 
   mustRef(col: string): string {

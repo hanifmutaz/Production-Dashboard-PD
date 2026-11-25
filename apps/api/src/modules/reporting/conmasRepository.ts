@@ -131,7 +131,7 @@ export class ConmasRepository {
     const c = this.cols;
     const sql = `SELECT ${this.detailSelect()}
 FROM ${c.view}
-WHERE ${c.lineExpr} IN (${placeholders(lines.length)})
+WHERE ${c.productionModePredicate} AND ${c.lineExpr} IN (${placeholders(lines.length)})
   AND ${c.dateText} IN (${placeholders(dates.length, lines.length + 1)})
 ORDER BY 1, 2`;
     const { rows } = await this.reader.select(sql, [...lines, ...dates]);
@@ -198,7 +198,7 @@ ORDER BY 1, 2`;
   SUM(${c.numAgg(C.performance_loss)}) AS l_perf,
   SUM(${c.numAgg(C.quality_loss)}) AS l_qual
 FROM ${c.view}
-WHERE ${c.lineExpr} IN (${placeholders(n)})
+WHERE ${c.productionModePredicate} AND ${c.lineExpr} IN (${placeholders(n)})
   AND ${c.dateExpr} BETWEEN $${n + 1}::date AND $${n + 2}::date
 GROUP BY ${c.lineExpr}, ${c.dateText}
 ORDER BY ${c.lineExpr}, ${c.dateText}`;
@@ -242,7 +242,7 @@ ORDER BY ${c.lineExpr}, ${c.dateText}`;
     });
     const sql = `SELECT ${parts.join(', ')}
 FROM ${c.view}
-WHERE ${c.lineExpr} IN (${placeholders(n)})
+WHERE ${c.productionModePredicate} AND ${c.lineExpr} IN (${placeholders(n)})
   AND ${c.dateExpr} BETWEEN $${n + 1}::date AND $${n + 2}::date`;
     const { rows } = await this.reader.select(sql, [...lines, start, end]);
     return rows.map((r) => ({
@@ -267,7 +267,7 @@ WHERE ${c.lineExpr} IN (${placeholders(n)})
     const updated = c.ref(C.sys_update_time) ?? 'NULL';
     const sql = `SELECT DISTINCT ON (${c.lineExpr}) ${this.detailSelect()}
 FROM ${c.view}
-WHERE ${c.lineExpr} IN (${placeholders(lines.length)})
+WHERE ${c.productionModePredicate} AND ${c.lineExpr} IN (${placeholders(lines.length)})
 ORDER BY ${c.lineExpr}, ${c.mustRef(C.tanggal)} DESC, ${updated} DESC NULLS LAST`;
     const { rows } = await this.reader.select(sql, [...lines]);
     return rows.map((r) => this.mapDetail(r));
@@ -276,7 +276,7 @@ ORDER BY ${c.lineExpr}, ${c.mustRef(C.tanggal)} DESC, ${updated} DESC NULLS LAST
   /** Auto-discovery line registry. */
   async distinctLines(): Promise<string[]> {
     const c = this.cols;
-    const sql = `SELECT DISTINCT ${c.lineExpr} AS line FROM ${c.view} WHERE ${c.text(c.rc.COLS.line)} IS NOT NULL ORDER BY 1`;
+    const sql = `SELECT DISTINCT ${c.lineExpr} AS line FROM ${c.view} WHERE ${c.productionModePredicate} AND ${c.text(c.rc.COLS.line)} IS NOT NULL ORDER BY 1`;
     const { rows } = await this.reader.select<{ line: string }>(sql);
     return rows.map((r) => r.line);
   }

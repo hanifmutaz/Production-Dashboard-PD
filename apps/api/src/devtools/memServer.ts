@@ -47,6 +47,7 @@ async function main(): Promise<void> {
   const { Pool: DashPool } = dashDb.adapters.createPg();
   const { Pool: ConPool } = conDb.adapters.createPg();
   const app = createApp({
+    productionModeFrom: '2026-11-25',
     dashboard: new DashPool() as unknown as DbPool,
     conmas: createConmasReader(new ConPool() as unknown as DbPool),
     reportColumns: rc,

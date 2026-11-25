@@ -9,6 +9,7 @@ const colName = z.string().regex(/^[a-z0-9_]+$/, 'nama kolom hanya boleh [a-z0-9
 const reportColumnsSchema = z.object({
   VIEW: z.string().regex(/^[A-Za-z0-9_]+$/, 'nama view hanya boleh [A-Za-z0-9_]'),
   COLS: z.object({
+    production_mode: colName.default('cluster_1_1_t'),
     line: colName,
     cell_leader: colName,
     teknisi: colName,

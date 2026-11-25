@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   if (missing.length > 0) logger.warn({ missing }, 'Kolom mapping belum ada di view — dibaca sebagai NULL');
 
   const app = createApp({
+    productionModeFrom: env.PRODUCTION_MODE_FROM,
     dashboard,
     conmas,
     reportColumns,

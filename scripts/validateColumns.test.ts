@@ -12,7 +12,7 @@ describe('validate:columns', () => {
   it('mapping contoh lulus; 2 kolom ditandai belum ada di DB', () => {
     const r = validateMapping(rc, view);
     expect(r.errors).toEqual([]);
-    expect(r.referenced).toBe(873);
+    expect(r.referenced).toBe(874);
     expect(r.warnings).toHaveLength(2);
   });
   it('mendeteksi offset REJECT_PAIRS yang salah dan kolom tak dikenal', () => {

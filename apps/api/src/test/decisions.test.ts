@@ -123,6 +123,40 @@ describe('OQ-004/005/007: agregasi harian', () => {
   });
 });
 
+describe('Mode produksi i-Reporter', () => {
+  it('hanya report produksi masuk discovery, sync, agregasi dan detail', async () => {
+    const { h, admin } = await setup();
+    h.addReports([
+      { ...complete, line: '114', productionMode: ' TRUE ', sogo: 17 },
+      { ...complete, line: '114B', productionMode: 'true', sogo: 5 },
+      { ...complete, line: '114C', productionMode: 'false' },
+      { ...complete, line: '114', productionMode: 'false', sogo: 200 },
+      { ...complete, line: '114d', productionMode: null, sogo: 3 },
+      { ...complete, line: '114', productionMode: 'false', date: '2026-11-25' },
+      { ...complete, line: '114d', productionMode: null, date: '2026-11-25' },
+      { ...complete, line: '114D', productionMode: 'true', sogo: 9, date: '2026-11-25' },
+      ...['41HR', '41HR125 Re-Insoect', '114Reinpect', '114Re-Insp', '114D Re inspect'].map((line) => ({
+        ...complete,
+        line,
+        productionMode: 'true',
+      })),
+      ...['false', null, '', 'unknown'].map((productionMode, i) => ({ ...complete, line: 'R' + i, date: '2026-11-25', productionMode })),
+    ]);
+    h.dashboardDb.public.none(
+      "INSERT INTO lines (line_code, shift_scheme, location) VALUES ('114B', 2, 'internal'), ('41HR', 2, 'internal'), ('114Reinsp', 2, 'internal')",
+    );
+    expect((await admin.get('/api/v3/lines/discover')).body.data).toEqual(['114']);
+    expect((await admin.post('/api/v3/lines/sync', {})).body.data.added).toEqual(['114']);
+    const cards = (await admin.get('/api/v3/lines')).body.data.map((r: { line_code: string }) => r.line_code);
+    expect(cards).toContain('114');
+    for (const excluded of ['114B', '41HR', '114Reinsp']) expect(cards).not.toContain(excluded);
+    expect((await admin.get('/api/v3/reporting/summary/daily?date=2026-11-24')).body.data.sogo).toBe(25);
+    expect((await admin.get('/api/v3/reporting/summary/daily?date=2026-11-25')).body.data.sogo).toBe(9);
+    const report = await admin.get('/api/v3/reporting/reports?start=2026-11-24&end=2026-11-24');
+    expect(report.body.data).toHaveLength(3);
+  });
+});
+
 describe('OQ-017: default line baru dari Settings', () => {
   it('line hasil discovery memakai skema shift & lokasi dari line_discovery', async () => {
     const { h, admin } = await setup();

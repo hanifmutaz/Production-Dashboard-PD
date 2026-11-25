@@ -60,7 +60,7 @@ export function validateMapping(rc: ReportColumns, view: Map<string, ViewColumn>
   const expectSuffix = (field: string, col: string, suffix: 't' | 'n' | 'd'): void => {
     if (col.startsWith('cluster_') && !col.endsWith(`_${suffix}`)) errors.push(`${field} = ${col}, seharusnya kolom _${suffix}`);
   };
-  const TEXT_COLS = new Set(['line', 'cell_leader', 'teknisi', 'inspector', 'group', 'line_leader', 'shift']);
+  const TEXT_COLS = new Set(['production_mode', 'line', 'cell_leader', 'teknisi', 'inspector', 'group', 'line_leader', 'shift']);
   for (const [key, col] of Object.entries(rc.COLS)) {
     expectSuffix(`COLS.${key}`, col, key === 'tanggal' ? 'd' : TEXT_COLS.has(key) ? 't' : 'n');
   }

@@ -12,6 +12,7 @@
 const VIEW = process.env.DB_VIEW_NAME || "view_report_25415";
 
 const COLS = {
+  production_mode: "cluster_1_1_t",
   // identitas report
   line: "cluster_1_17_t",
   cell_leader: "cluster_1_30_t",

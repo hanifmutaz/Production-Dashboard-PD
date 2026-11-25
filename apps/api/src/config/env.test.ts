@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadEnv, shiftConfigFromEnv } from './env.js';
 
-const base = { CONMAS_DATABASE_URL: 'postgres://ro@h/db', DASHBOARD_DATABASE_URL: 'postgres://app@h/dash' };
+const base = { PRODUCTION_MODE_FROM: '2026-11-25', CONMAS_DATABASE_URL: 'postgres://ro@h/db', DASHBOARD_DATABASE_URL: 'postgres://app@h/dash' };
 
 describe('env schema', () => {
   it('default sesuai LOGIC_SPEC; grace = threshold bila tidak diisi; LOG_LEVEL case-insensitive', () => {

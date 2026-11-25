@@ -8,6 +8,12 @@ import { DataType, newDb, type IMemoryDb } from 'pg-mem';
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 export function registerPgCompat(db: IMemoryDb): void {
+  db.public.registerFunction({
+    name: 'regexp_replace',
+    args: [DataType.text, DataType.text, DataType.text],
+    returns: DataType.text,
+    implementation: (s: string, pattern: string, replacement: string) => s.replace(new RegExp(pattern), replacement),
+  });
   db.public.registerOperator({
     operator: '~',
     left: DataType.text,

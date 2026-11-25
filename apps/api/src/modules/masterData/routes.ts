@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../../http/auth.js';
-import { notFound, parseInput } from '../../http/errors.js';
+import { isProductionLine } from './lineCodes.js';
+import { badRequest, notFound, parseInput } from '../../http/errors.js';
 import { lineCode, tempat, versionField } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
@@ -46,6 +47,7 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
         }),
         req.body,
       );
+      if (b.tempat === 'internal' && b.active && !isProductionLine(code)) throw badRequest('Gunakan kode line induk yang berakhir angka.');
       const row = await withTransaction(pool, async (tx) => {
         const saved = await saveVersioned(tx, {
           version: b.version,
@@ -86,7 +88,7 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
   r.get('/discover', requirePermission('config.edit'), async (_req, res, next) => {
     try {
       const known = new Set((await repo.listAll()).map((l) => l.line_code));
-      const found = (await conmas.distinctLines()).filter((l) => /^[A-Za-z0-9_-]+$/.test(l) && !known.has(l));
+      const found = (await conmas.distinctLines()).filter((l) => isProductionLine(l) && !known.has(l));
       res.json({ data: found, status: 'ok' });
     } catch (e) {
       next(e);
@@ -97,7 +99,7 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
   r.post('/sync', requirePermission('config.edit'), async (req, res, next) => {
     try {
       const known = new Set((await repo.listAll()).map((l) => l.line_code));
-      const found = (await conmas.distinctLines()).filter((l) => /^[A-Za-z0-9_-]+$/.test(l) && !known.has(l));
+      const found = (await conmas.distinctLines()).filter((l) => isProductionLine(l) && !known.has(l));
       const def = await settings.lineDiscovery();
       await withTransaction(pool, async (tx) => {
         for (const code of found) {

@@ -20,6 +20,7 @@ const envSchema = z
     // DB ConMas (read-only, INV-001)
     CONMAS_DATABASE_URL: z.string().min(1, 'CONMAS_DATABASE_URL wajib diisi'),
     DB_VIEW_NAME: z.string().regex(/^[A-Za-z0-9_]+$/).default('view_report_25415'),
+    PRODUCTION_MODE_FROM: z.iso.date(),
     REPORT_COLUMNS_PATH: z.string().default('config/reportColumns.js'),
 
     // DB dashboard (data aplikasi)

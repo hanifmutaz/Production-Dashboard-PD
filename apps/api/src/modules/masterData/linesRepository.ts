@@ -1,6 +1,8 @@
 import type { ShiftScheme } from '@v3/shared';
 import type { Queryable } from '../../db/pool.js';
 
+import { isProductionLine } from './lineCodes.js';
+
 export interface LineRecord {
   readonly line_code: string;
   readonly description: string;
@@ -34,7 +36,7 @@ export class LinesRepository {
     const { rows } = location
       ? await this.db.query(`SELECT * FROM lines WHERE active = true AND location = $1 ORDER BY line_code`, [location])
       : await this.db.query(`SELECT * FROM lines WHERE active = true ORDER BY line_code`);
-    return rows.map(mapLine);
+    return rows.map(mapLine).filter((line) => line.location !== 'internal' || isProductionLine(line.line_code));
   }
 
   async listAll(): Promise<LineRecord[]> {
@@ -45,6 +47,6 @@ export class LinesRepository {
   async find(lineCode: string): Promise<LineRecord | null> {
     const { rows } = await this.db.query(`SELECT * FROM lines WHERE line_code = $1`, [lineCode]);
     const row = rows[0];
-    return row ? mapLine(row) : null;
+    return row && (row['location'] !== 'internal' || isProductionLine(lineCode)) ? mapLine(row) : null;
   }
 }

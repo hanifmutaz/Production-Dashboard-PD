@@ -26,6 +26,7 @@ export function fixtureDdl(rc: ReportColumns, table: string): string {
 }
 
 export interface ReportSpec {
+  readonly productionMode?: string | null;
   readonly line: string;
   readonly date: string;
   readonly shift: string;
@@ -66,6 +67,7 @@ export function buildRow(rc: ReportColumns, spec: ReportSpec): FixtureRow {
   const C = rc.COLS;
   const row: FixtureRow = {};
   for (const c of fixtureColumns(rc)) row[c.name] = null;
+  row[C.production_mode] = spec.productionMode === undefined ? 'true' : spec.productionMode;
   row[C.line] = spec.line;
   row[C.tanggal] = `${spec.date} 00:00:00`;
   row[C.shift] = spec.shift;
