@@ -458,7 +458,7 @@ export function LineDetail({ line }: { readonly line: string }) {
         </div>
       ) : null}
       <div className="lng">
-        <div className="lnl">
+        <div className="lnl" tabIndex={0}>
           <div className="li">
             {lkv(rg ? 'Periode' : 'Tanggal', rg ? rgs : tgl, 'ac')}
             {lkv('CL No', d?.cl_no ?? '-', 'ac')}

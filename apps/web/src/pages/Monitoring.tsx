@@ -484,7 +484,7 @@ export function Monitoring({ site }: { readonly site: string }) {
             >
               <table className="matrix">
                 <colgroup id="matrix-columns">
-                  {[combined ? 100 : 85, 66, 47, 46, 68, 68, 68, 88, 96, 68].map((w, i) => (
+                  {[combined ? 100 : 85, 120, 47, 46, 68, 80, 68, 88, 96, 68].map((w, i) => (
                     <col key={i} style={{ width: `${w}px` }} />
                   ))}
                   {ds.map((d) => (
@@ -548,7 +548,7 @@ export function Monitoring({ site }: { readonly site: string }) {
                               {combined ? <small className="line-site">{siteName(r.site)}</small> : null}
                             </button>
                           </td>
-                          <td>{r.product || '—'}</td>
+                          <td title={r.product || undefined}>{r.product || '—'}</td>
                           <td title={`${r.scheme} shift`}>{r.scheme} sh</td>
                           <td>{fmt(r.days)}</td>
                           <td>{fmt(r.monthly)}</td>

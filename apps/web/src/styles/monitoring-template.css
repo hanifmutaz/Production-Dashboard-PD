@@ -55,7 +55,7 @@ th{color:var(--dim);font-weight:700}
 .matrix td:nth-child(1),.matrix td:nth-child(2),.matrix th:nth-child(1),.matrix th:nth-child(2){text-align:left;position:sticky;background:var(--white);z-index:1}
 .matrix th:nth-child(1),.matrix th:nth-child(2){z-index:3;background:var(--head)}
 .matrix th:nth-child(1),.matrix td:nth-child(1){width:85px;min-width:85px;left:0}
-.matrix th:nth-child(2),.matrix td:nth-child(2){width:66px;min-width:66px;left:85px;box-shadow:1px 0 var(--line)}
+.matrix th:nth-child(2),.matrix td:nth-child(2){width:120px;min-width:120px;left:85px;box-shadow:1px 0 var(--line);overflow:hidden;text-overflow:ellipsis}
 .matrix .group-divider{border-left:2px solid var(--line)}
 .matrix tr:hover td{background:var(--ghost)}
 .matrix tr.selected td{background:var(--selected)}
@@ -209,7 +209,7 @@ th{color:var(--dim);font-weight:700}
 .kpi-meter.pos{--meter:var(--green)}
 .module-head{padding-block:11px}
 .module-head p{max-width:48ch}
-.matrix{min-width:1028px}
+.matrix{min-width:1094px}
 .matrix th,.matrix td{border-right:0}
 .matrix thead th{height:42px}
 .matrix tbody tr:nth-child(even) td{background:var(--ghost)}

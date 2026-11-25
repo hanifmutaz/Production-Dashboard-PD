@@ -302,7 +302,7 @@ export function Master({ site }: { readonly site: string }) {
     <section className="card">
       <div className="master-loss-head">
         <h2>{title}</h2>
-        <a className="btn" href={stopHref} aria-label={`${title} untuk ${siteName(site)}`}>
+        <a className="btn" href={stopHref} aria-label={`Detail ${title} untuk ${siteName(site)}`}>
           <Icon name="clock" size={14} />
           Detail
         </a>
