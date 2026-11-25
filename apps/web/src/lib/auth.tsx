@@ -10,6 +10,7 @@ export interface Me {
   /** Menu Custom Role (kosong = semua). */
   readonly menus: readonly string[];
   /** Perangkat kiosk: line yang ditampilkan. */
+  readonly screen?: 'line' | 'hub' | 'executive' | null;
   readonly line: string | null;
   /** Tanggal hari ini menurut server (WIB, YYYY-MM-DD). */
   readonly today: string;
@@ -48,6 +49,13 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  const tv = me?.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive');
+  useEffect(() => {
+    if (!tv) return;
+    const timer = window.setInterval(() => { void refresh().catch(() => undefined); }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [tv, refresh]);
+
   const value: AuthState = {
     me,
     loading,
@@ -67,6 +75,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
     can: (permission) => me?.permissions.includes(permission) ?? false,
     allowed(r) {
       if (!me) return false;
+      if (tv) return r === me.screen;
       if (me.kind === 'device') return r === 'line' || (me.line !== null && r === `line-${me.line.toLowerCase()}`);
       if (!me.menus.length) return true;
       return me.menus.some((m) => r === m || (['master', 'stoptime', 'monitoring-output', 'line'].includes(m) && r.startsWith(`${m}-`)));

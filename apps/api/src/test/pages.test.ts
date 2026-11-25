@@ -194,3 +194,24 @@ describe('daftar & ubah akun', () => {
     expect(after).toMatchObject({ role: 'supervisor', locations: [], version: 2 });
   });
 });
+
+it.each(['hub', 'executive'])('TV Departemen %s hanya membaca layar terdaftar sampai dicabut', async (screen) => {
+  const { h, admin } = await setup();
+  const path = '/api/v3/access/devices/pairing-codes';
+  expect((await admin.post(path, { screen, line_code: 'L01' })).status).toBe(400);
+  const issued = await admin.post(path, { name: 'TV Rapat', screen });
+  expect(issued.status).toBe(201);
+  const pair = await request(h.app).post('/api/v3/auth/pair').send({ code: issued.body.data.code, name: 'Browser TV' });
+  expect(pair.status).toBe(201);
+  const token = 'Device ' + pair.body.data.token;
+  const get = (url: string) => request(h.app).get('/api/v3' + url).set('authorization', token);
+  expect((await get('/auth/me')).body.data).toMatchObject({ screen, line: null, menus: [screen] });
+  const range = '?start=2026-11-24&end=2026-11-24&location=internal';
+  expect((await get('/reporting/summary/range' + range)).status).toBe(screen === 'hub' ? 200 : 403);
+  expect((await get('/reporting/trend/range' + range)).status).toBe(screen === 'hub' ? 200 : 403);
+  expect((await get('/executive/month?year=2026&month=11')).status).toBe(screen === 'executive' ? 200 : 403);
+  expect((await get('/planning?year=2026&month=11')).status).toBe(403);
+  expect((await request(h.app).put('/api/v3/executive/target').set('authorization', token)).status).toBe(403);
+  expect((await admin.post('/api/v3/access/devices/' + pair.body.data.device.id + '/revoke', {})).status).toBe(204);
+  expect((await get('/auth/me')).status).toBe(401);
+});

@@ -16,7 +16,17 @@ export function authenticate(auth: AuthService): RequestHandler {
     const run = async (): Promise<void> => {
       if (header.startsWith('Device ')) {
         const p = await auth.resolveDevice(header.slice('Device '.length).trim());
-        if (p) req.principal = p;
+        if (p) {
+          if (p.screen === 'hub' || p.screen === 'executive') {
+            const common = req.path === '/auth/me' || req.path === '/settings';
+            const view = p.screen === 'executive'
+              ? req.path === '/executive/month'
+              : ['/reporting/summary/range', '/reporting/trend/range'].includes(req.path)
+                && req.query['location'] === 'internal' && req.query['line'] === undefined;
+            if (req.baseUrl !== '/api/v3' || req.method !== 'GET' || !(common || view)) throw forbidden('Akses terbatas pada layar TV terdaftar');
+          }
+          req.principal = p;
+        }
         return;
       }
       if (sessionToken) {

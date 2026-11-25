@@ -102,7 +102,7 @@ export function Login() {
               Device Pairing Code
               <input name="code" required placeholder="XXXX-XXXX" autoComplete="off" />
             </label>
-            <button className="btn login-submit">Hubungkan iPad</button>
+            <button className="btn login-submit">Hubungkan perangkat</button>
             <p className="sb" id="pair-error" role="alert">
               {pairMsg}
             </p>

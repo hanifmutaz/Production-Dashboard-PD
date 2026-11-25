@@ -204,10 +204,10 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
   r.get('/devices', manageDevices, async (_req, res, next) => {
     try {
       const { rows } = await pool.query(
-        `SELECT id, name, location, line_code, created_at, last_seen_at, revoked_at FROM devices ORDER BY id DESC`,
+        `SELECT id, name, location, line_code, screen, created_at, last_seen_at, revoked_at FROM devices ORDER BY id DESC`,
       );
       const codes = await pool.query(
-        `SELECT id, location, line_code, device_name, created_at, expires_at FROM device_pairing_codes WHERE consumed_at IS NULL AND expires_at > now() ORDER BY id DESC`,
+        `SELECT id, location, line_code, screen, device_name, created_at, expires_at FROM device_pairing_codes WHERE consumed_at IS NULL AND expires_at > now() ORDER BY id DESC`,
       );
       res.json({ data: { devices: rows, pending: codes.rows }, status: 'ok' });
     } catch (e) {
@@ -220,24 +220,25 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
       const b = parseInput(
         z.object({
           location: tempat.optional(),
+          screen: z.enum(['line', 'hub', 'executive']).default('line'),
           line_code: z
             .string()
             .regex(/^[A-Za-z0-9_-]{1,40}$/)
             .optional(),
           name: z.string().trim().min(1).max(80).optional(),
-        }),
+         }).refine(b => b.screen === 'line' || (!b.line_code && (!b.location || b.location === 'internal')), 'TV Departemen memakai lokasi internal tanpa line'),
         req.body ?? {},
       );
       const code = newPairingCode();
       const expiresAt = new Date(Date.now() + opts.pairingTtlMin * 60_000);
       await withTransaction(pool, async (tx) => {
         await tx.query(
-          `INSERT INTO device_pairing_codes (code_hash, location, line_code, device_name, created_by, expires_at) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [hashToken(code), b.location ?? null, b.line_code ?? null, b.name ?? null, principalOf(req).id, expiresAt],
+          `INSERT INTO device_pairing_codes (code_hash, location, line_code, device_name, created_by, expires_at, screen) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [hashToken(code), b.location ?? (b.screen === 'line' ? null : 'internal'), b.line_code ?? null, b.name ?? null, principalOf(req).id, expiresAt, b.screen],
         );
         await recordAudit(tx, req, {
           action: 'device.pairing_code.create',
-          detail: { location: b.location ?? null, line: b.line_code ?? null, expiresAt },
+          detail: { screen: b.screen, location: b.location ?? null, line: b.line_code ?? null, expiresAt },
         });
       });
       res.status(201).json({ data: { code, expiresAt }, status: 'ok' });

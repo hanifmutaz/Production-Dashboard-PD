@@ -729,19 +729,23 @@ export function RolesPanel() {
 }
 
 // ---------- Device Management (port devicePanel) ----------
+const deviceScreens = { line: 'Per Line', hub: 'TV Departemen · Master Dashboard Utama', executive: 'TV Departemen · Executive' } as const;
+type DeviceScreen = keyof typeof deviceScreens;
+
 interface Devices {
   readonly devices: readonly {
     id: number;
     name: string;
     location: string | null;
-    line_code: string | null;
+    line_code: string | null; screen: DeviceScreen;
     last_seen_at: string | null;
     revoked_at: string | null;
   }[];
-  readonly pending: readonly { id: number; line_code: string | null; device_name: string | null; expires_at: string }[];
+  readonly pending: readonly { id: number; line_code: string | null; screen: DeviceScreen; device_name: string | null; expires_at: string }[];
 }
 
 export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
+  const [screen, setScreen] = useState<DeviceScreen>('line');
   const dev = useApi<Devices>('/api/v3/access/devices');
   const [code, setCode] = useState<{ code: string; expiresAt: string } | null>(null);
   const [msg, setMsg] = useState<[string, boolean]>(['', false]);
@@ -751,7 +755,8 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
     api
       .post<{ code: string; expiresAt: string }>('/api/v3/access/devices/pairing-codes', {
         location: 'internal',
-        line_code: String(f.get('line') ?? '') || undefined,
+        screen,
+        line_code: screen === 'line' ? String(f.get('line') ?? '') || undefined : undefined,
         name: String(f.get('name') ?? '').trim(),
       })
       .then((r) => (setCode(r.data), dev.reload()))
@@ -761,23 +766,29 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
     <>
       <Feedback msg={msg[0]} error={msg[1]} />
       <section className="card">
-        <h2>Daftarkan iPad / Kiosk</h2>
-        <p className="sb">Kode sekali pakai, berlaku 10 menit. Masukkan di layar login iPad → "Hubungkan iPad".</p>
+        <h2>Daftarkan iPad atau TV Departemen</h2>
+        <p className="sb">Masukkan kode sekali pakai di layar login perangkat melalui tombol Hubungkan perangkat.</p>
         <form id="device-form" onSubmit={submit}>
           <label className="fld">
             Nama perangkat
             <input name="name" required maxLength={80} />
           </label>
           <label className="fld">
+            Tampilan perangkat
+            <select value={screen} onChange={(e) => {setScreen(e.target.value as DeviceScreen); setCode(null);}}>
+              {Object.entries(deviceScreens).map(([key,label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
+          {screen === 'line' && <label className="fld">
             Lokasi / Line
-            <select name="line">
+            <select name="line" required>
               {lines.map((l) => (
                 <option key={l} value={l}>
                   {siteName('internal')} · {l}
                 </option>
               ))}
             </select>
-          </label>
+          </label>}
           <button className="btn velvet-action">Generate pairing code</button>
         </form>
         {code ? (
@@ -797,7 +808,7 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
                 <Icon name="tablet" size={32} />
               </div>
               <b>{p.device_name ?? 'Perangkat baru'}</b>
-              <div className="sb">{p.line_code ?? '—'} · Menunggu pairing</div>
+              <div className="sb">{p.screen === 'line' ? p.line_code ?? 'Per Line' : deviceScreens[p.screen]} · Menunggu pairing</div>
               <strong></strong>
             </div>
           ))}
@@ -808,7 +819,7 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
               </div>
               <b>{d.name}</b>
               <div className="sb">
-                {d.line_code ?? '—'} ·{' '}
+                {d.screen === 'line' ? d.line_code ?? 'Per Line' : deviceScreens[d.screen]} ·{' '}
                 {d.revoked_at
                   ? 'Dicabut'
                   : d.last_seen_at

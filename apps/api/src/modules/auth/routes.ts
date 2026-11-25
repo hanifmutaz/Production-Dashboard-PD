@@ -52,6 +52,7 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
         locations: p.locations,
         menus: p.menus ?? [],
         line: p.line ?? null,
+        screen: p.screen ?? null,
         today: formatIsoDate(now),
         now: now.toISOString(),
       },
@@ -81,15 +82,15 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
       const device = await withTransaction(pool, async (tx) => {
         const { rows } = await tx.query(
           `UPDATE device_pairing_codes SET consumed_at = now()
-           WHERE code_hash = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING id, location, line_code, device_name`,
+           WHERE code_hash = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING id, location, line_code, device_name, screen`,
           [hashToken(b.code)],
         );
         const code = rows[0];
         if (!code) throw new AppError(422, 'PAIRING_INVALID', 'Kode pairing tidak valid, sudah dipakai, atau kedaluwarsa');
         const created = await tx.query(
-          `INSERT INTO devices (name, token_hash, location, line_code) VALUES ($1, $2, $3, $4) RETURNING id, name, location, line_code`,
+          `INSERT INTO devices (name, token_hash, location, line_code, screen) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, location, line_code, screen`,
           // Nama dari admin saat membuat kode lebih diutamakan daripada nama yang dikirim perangkat.
-          [code['device_name'] ?? b.name, hashToken(token), code['location'] ?? null, code['line_code'] ?? null],
+          [code['device_name'] ?? b.name, hashToken(token), code['location'] ?? null, code['line_code'] ?? null, code['screen']],
         );
         const d = created.rows[0];
         if (!d) throw new AppError(500, 'INTERNAL', 'Gagal membuat perangkat');

@@ -53,7 +53,7 @@ export function registerPgCompat(db: IMemoryDb): void {
   });
 }
 
-const MIGRATIONS = ['1732400000000_init.sql', '1732500000000_planning_lines.sql', '1732600000000_user_email.sql'];
+const MIGRATIONS = ['1732400000000_init.sql', '1732500000000_planning_lines.sql', '1732600000000_user_email.sql', '1732700000000_tv_screen.sql'];
 
 export function migrationStatements(): string[] {
   return MIGRATIONS.flatMap((file) => {

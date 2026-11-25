@@ -121,11 +121,13 @@ export class AuthService {
 
   async resolveDevice(token: string): Promise<Principal | null> {
     const { rows } = await this.pool.query(
-      `UPDATE devices SET last_seen_at = now() WHERE token_hash = $1 AND revoked_at IS NULL RETURNING id, name, location, line_code`,
+      `UPDATE devices SET last_seen_at = now() WHERE token_hash = $1 AND revoked_at IS NULL RETURNING id, name, location, line_code, screen`,
       [hashToken(token)],
     );
     const d = rows[0];
     if (!d) return null;
+    const screen = d['screen'];
+    if (screen !== 'line' && screen !== 'hub' && screen !== 'executive') return null;
     return {
       kind: 'device',
       id: Number(d['id']),
@@ -133,7 +135,8 @@ export class AuthService {
       roleCode: 'kiosk',
       permissions: DEVICE_PERMISSIONS,
       locations: d['location'] ? [String(d['location'])] : [],
-      menus: ['line'],
+      screen,
+      menus: [screen],
       line: d['line_code'] ? String(d['line_code']) : null,
     };
   }

@@ -33,6 +33,7 @@ export interface Principal {
   /** Menu yang boleh dibuka (Custom Role). Kosong = semua menu (role bawaan). */
   readonly menus?: readonly string[];
   /** Perangkat kiosk: line yang ditampilkan. */
+  readonly screen?: 'line' | 'hub' | 'executive';
   readonly line?: string | null;
 }
 
