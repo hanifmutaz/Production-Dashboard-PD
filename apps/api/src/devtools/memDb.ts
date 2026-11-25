@@ -9,6 +9,12 @@ export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url
 
 export function registerPgCompat(db: IMemoryDb): void {
   db.public.registerFunction({
+    name: 'length',
+    args: [DataType.text],
+    returns: DataType.integer,
+    implementation: (value: string) => Array.from(value).length,
+  });
+  db.public.registerFunction({
     name: 'regexp_replace',
     args: [DataType.text, DataType.text, DataType.text],
     returns: DataType.text,
