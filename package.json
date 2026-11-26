@@ -11,7 +11,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "npm run build -w @v3/shared && npm run dev -w @v3/api",
+    "dev": "npm run build -w @v3/shared && npm run build -w @v3/web && node --watch --env-file-if-exists=.env --import tsx apps/api/src/server.ts",
+    "prestart": "npm run build",
+    "start": "node --env-file=.env apps/api/dist/server.js",
     "build": "npm run build -w @v3/shared && npm run build -w @v3/api && npm run build -w @v3/web",
     "typecheck": "tsc -p packages/shared --noEmit && tsc -p apps/api --noEmit && tsc -p scripts && tsc -p apps/web --noEmit",
     "lint": "eslint packages/shared/src apps/api/src apps/web/src scripts",
