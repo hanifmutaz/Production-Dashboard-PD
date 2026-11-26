@@ -44,10 +44,11 @@
   justify-content: space-between;
   gap: 16px 32px;
   flex-wrap: wrap;
-  margin-bottom: clamp(14px, 1.6vw, 30px);
-  padding-bottom: clamp(12px, 1.2vw, 22px);
+  margin-bottom: clamp(6px, .6vw, 12px);
+  padding-bottom: clamp(10px, 1vw, 18px);
   border-bottom: 1px solid var(--bd);
 }
+.department-tv > .page { padding-top: clamp(6px, .6vw, 12px); }
 .tv-head-title { display: grid; gap: clamp(4px, .5vw, 10px); min-width: 0; }
 .tv-eyebrow {
   color: var(--acc);
