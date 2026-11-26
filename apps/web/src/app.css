@@ -94,3 +94,7 @@
 @media (max-width: 720px) {
   .tv-head-meta { justify-items: start; }
 }
+
+/* ---- TV Departemen: perbesar isi dashboard agar terbaca dari jauh (layar TV ditonton dari beberapa meter) ---- */
+.department-tv[data-tv="executive"] > .page { zoom: 1.5; }
+.department-tv[data-tv="hub"] > .page { zoom: 1.3; }

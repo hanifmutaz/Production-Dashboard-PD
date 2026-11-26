@@ -64,7 +64,7 @@ export function App() {
   // Perangkat kiosk hanya melihat line miliknya (port allowedRoute + pairedDevice).
   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) {
     return (
-      <main id="view" className="department-tv" key={`${me.screen}-${me.today}`}>
+      <main id="view" className="department-tv" data-tv={me.screen} key={`${me.screen}-${me.today}`}>
         <TvHeader title={me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'} device={me.name} />
         {me.screen === 'hub' ? <Hub /> : <Executive />}
       </main>
