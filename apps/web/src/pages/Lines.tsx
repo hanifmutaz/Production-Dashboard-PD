@@ -10,7 +10,7 @@ interface LineRow {
   readonly description: string;
   readonly shift_scheme: number;
   readonly location: string;
-  readonly product: string;
+  readonly series: string;
 }
 
 export function Lines() {
@@ -35,7 +35,7 @@ export function Lines() {
         {(lines.data ?? []).map((l) => (
           <a key={l.line_code} className="lc" href={`#line-${l.line_code.toLowerCase()}`}>
             <b>{l.line_code}</b>
-            <span>{l.description || l.product || siteName(l.location)}</span>
+            <span>{l.description || l.series || siteName(l.location)}</span>
             <i className="sh" style={{ fontStyle: 'normal' }}>
               {l.shift_scheme} SHIFT
             </i>

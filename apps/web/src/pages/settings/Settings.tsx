@@ -395,7 +395,7 @@ export function Settings() {
     ([id]) => section !== 'access' || can(id === 'devices' ? 'devices.manage' : 'users.manage'),
   );
   const [group, setGroup] = useState<Record<string, string>>({});
-  const lines = useApi<{ line_code: string; product: string; location: string }[]>(
+  const lines = useApi<{ line_code: string; series: string; location: string }[]>(
     can('config.view') ? '/api/v3/lines/all' : can('devices.manage') ? '/api/v3/lines' : null,
   );
   const pendingRegs = useApi<{ pending: number }>(can('users.manage') ? '/api/v3/access/registrations/count' : null);

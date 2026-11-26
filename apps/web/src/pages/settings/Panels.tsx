@@ -37,6 +37,8 @@ interface LineRec {
   readonly active: boolean;
   readonly version: number;
   readonly product: string;
+  /** Manual bila diisi, kalau kosong otomatis dari ConMas. */
+  readonly series: string;
   readonly external_code: string;
   readonly cycle_time: number | null;
 }
@@ -116,7 +118,7 @@ export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; r
           id: l.line_code,
           active: l.active,
           title: l.description && l.description !== l.line_code ? `${l.line_code} · ${l.description}` : l.line_code,
-          detail: [siteName(l.location), l.product, `${l.shift_scheme} shift`, l.cycle_time ? `${l.cycle_time} s` : null],
+          detail: [siteName(l.location), l.series, `${l.shift_scheme} shift`, l.cycle_time ? `${l.cycle_time} s` : null],
         }))}
         onNew={() => setEditing('new')}
         onEdit={setEditing}
@@ -210,7 +212,7 @@ interface Plan {
   readonly lines: readonly { line_code: string; target: number; work_days: number; note: string; version: number }[];
 }
 
-type MasterLines = ApiState<Pick<LineRec, 'line_code' | 'product' | 'location'>[]>;
+type MasterLines = ApiState<Pick<LineRec, 'line_code' | 'series' | 'location'>[]>;
 type TargetDraft = { qty: string; days: string; note: string; version?: number };
 type PlanningProps = { readonly master: MasterLines };
 
@@ -332,7 +334,7 @@ function MonthTargets({
         onChange={(e) => edit(id, { [field]: e.target.value })}
       />
     );
-  const lines = new Map((master.data ?? []).filter((l) => l.location === 'internal').map((l) => [l.line_code, l.product]));
+  const lines = new Map((master.data ?? []).filter((l) => l.location === 'internal').map((l) => [l.line_code, l.series]));
   // Keep previously planned lines accessible if the master record was removed.
   const known = new Set((master.data ?? []).map((l) => l.line_code));
   for (const l of plan.data?.lines ?? []) if (!known.has(l.line_code)) lines.set(l.line_code, '');

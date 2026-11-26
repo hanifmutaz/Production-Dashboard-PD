@@ -75,7 +75,7 @@ export const SPEC: Readonly<Record<string, readonly Field[]>> = {
     ['site', 'Lokasi', 'site'],
     ['code', 'Kode line', 'code'],
     ['name', 'Nama line', 'text', true],
-    ['product', 'Produk / series', 'product', true],
+    ['product', 'Produk / series (kosong = otomatis dari ConMas)', 'product', true],
     ['external', 'Kode line di ConMas', 'text', true],
     ['cycle', 'Cycle time standar (detik)', 'num', true, 0.01, 99999],
     [

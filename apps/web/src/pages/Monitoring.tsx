@@ -29,7 +29,8 @@ const compactQty = (v: number): string => (v < 1000 ? fmt(v) : `${compactNumber.
 
 interface LineRow {
   readonly line_code: string;
-  readonly product: string;
+  /** Series: isian manual master, atau otomatis dari nama produk ConMas. */
+  readonly series: string;
   readonly shift_scheme: number;
   readonly location: string;
 }
@@ -165,7 +166,7 @@ export function Monitoring({ site }: { readonly site: string }) {
       return {
         line: l.line_code,
         site: l.location,
-        product: l.product,
+        product: l.series,
         scheme: l.shift_scheme,
         monthly,
         days,
