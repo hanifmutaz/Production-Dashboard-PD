@@ -52,7 +52,7 @@ export const SETTINGS_GROUPS: Readonly<Record<string, readonly (readonly [string
   access: [
     ['users', 'Akun'],
     ['permissions', 'Hak akses'],
-    ['customRoles', 'Custom Role'],
+    ['customRoles', 'Kelola Role'],
     ['devices', 'Device Management'],
   ],
 };

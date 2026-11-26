@@ -71,6 +71,7 @@ function detailOf(key: string, row: Record<string, unknown>): (string | null)[] 
 function ConfigList({ section, label, lookups }: { readonly section: string; readonly label: string; readonly lookups: Lookups }) {
   const { raw } = useConfig();
   const save = useSaveSetting();
+  const canEdit = useAuth().can('config.edit');
   const key = `config.${section}`;
   const stored = (raw.get(key)?.value as { rows?: Rows } | undefined)?.rows;
   const rows: Rows = stored ?? LIST_DEFAULT_ROWS[section] ?? [];
@@ -113,6 +114,7 @@ function ConfigList({ section, label, lookups }: { readonly section: string; rea
       ) : null}
       <ListTable
         label={label}
+        readOnly={!canEdit}
         rows={rows.map((r) => ({
           id: String(r['id']),
           active: r['active'] === true,
@@ -370,38 +372,25 @@ function SourcePreview() {
   );
 }
 
-function ReadOnly() {
-  const { kpi } = useConfig();
-  return (
-    <div className="page">
-      <div className="settings-workspace settings-access">
-        <div className="settings-help-callout">
-          <p>
-            Masuk sebagai <strong>Admin</strong> untuk mengubah pengaturan.
-          </p>
-        </div>
-        <section className="settings-card" aria-labelledby="settings-readonly-kpi">
-          <header>
-            <h2 id="settings-readonly-kpi">Ambang pencapaian</h2>
-            <span className="settings-state">Hanya lihat</span>
-          </header>
-          <p className="settings-help">Aturan untuk semua lokasi.</p>
-          <AchievementLegend t={kpi} />
-        </section>
-      </div>
-    </div>
-  );
-}
-
 export function Settings() {
   const { can } = useAuth();
   const { raw } = useConfig();
-  const [section, setSection] = useState('kpi'); // sama dengan settingsUI.section mockup
-  const groups = SETTINGS_GROUPS[section];
+  const [selected, setSection] = useState('kpi');
+  const sections = SETTINGS_SECTIONS.filter(([id]) => {
+    if (id === 'access') return can('users.manage') || can('devices.manage');
+    if (id === 'audit') return can('audit.view') || can('config.edit');
+    return can('config.view');
+  });
+  const section = sections.find(([id]) => id === selected)?.[0] ?? sections[0]?.[0] ?? '';
+  const groups = SETTINGS_GROUPS[section]?.filter(
+    ([id]) => section !== 'access' || can(id === 'devices' ? 'devices.manage' : 'users.manage'),
+  );
   const [group, setGroup] = useState<Record<string, string>>({});
-  const lines = useApi<{ line_code: string; product: string; location: string }[]>(can('config.edit') ? '/api/v3/lines/all' : null);
-  if (!can('config.edit') && !can('users.manage')) return <ReadOnly />;
-  const key = groups ? (group[section] ?? groups[0]?.[0] ?? section) : section;
+  const lines = useApi<{ line_code: string; product: string; location: string }[]>(
+    can('config.view') ? '/api/v3/lines/all' : can('devices.manage') ? '/api/v3/lines' : null,
+  );
+  if (!sections.length) return null;
+  const key = groups ? (groups.find(([id]) => id === group[section])?.[0] ?? groups[0]?.[0] ?? section) : section;
   const products = ((raw.get('config.products')?.value as { rows?: Rows } | undefined)?.rows ?? [])
     .filter((r) => r['active'])
     .map((r) => [String(r['code']), String(r['name'])] as const);
@@ -469,12 +458,18 @@ export function Settings() {
         <div className="settings-intro">
           <div>
             <p>Konfigurasi dashboard produksi</p>
-            <span>Perubahan tersimpan di server dan tercatat di audit log.</span>
+            <span>
+              {can('config.edit')
+                ? 'Perubahan tersimpan di server dan tercatat di audit log.'
+                : can('config.view')
+                  ? 'Konfigurasi produksi · Hanya lihat'
+                  : 'Administrasi sesuai hak akses role.'}
+            </span>
           </div>
         </div>
         <div className="settings-layout">
           <nav className="settings-menu" aria-label="Kategori Settings">
-            {SETTINGS_SECTIONS.map(([id, l, icon]) => (
+            {sections.map(([id, l, icon]) => (
               <button
                 key={id}
                 type="button"
@@ -510,7 +505,13 @@ export function Settings() {
               </div>
             ) : null}
             {DETAIL[section] ? <p className="settings-help settings-context">{DETAIL[section]}</p> : null}
-            {body}
+            {!can('config.edit') && ['general', 'source', 'display', 'kpi'].includes(key) ? (
+              <fieldset className="settings-readonly" disabled>
+                {body}
+              </fieldset>
+            ) : (
+              body
+            )}
             {section === 'source' ? <SourcePreview /> : null}
           </div>
         </div>

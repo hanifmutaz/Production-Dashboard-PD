@@ -6,6 +6,7 @@ export type Permission =
   | 'dashboard.investigate'
   | 'meeting.use'
   | 'export.run'
+  | 'config.view'
   | 'config.edit'
   | 'users.manage'
   | 'devices.manage'
@@ -16,6 +17,7 @@ export const ALL_PERMISSIONS: readonly Permission[] = [
   'dashboard.investigate',
   'meeting.use',
   'export.run',
+  'config.view',
   'config.edit',
   'users.manage',
   'devices.manage',

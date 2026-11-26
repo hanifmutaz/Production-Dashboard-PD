@@ -53,7 +53,11 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
       );
       const role = await withTransaction(pool, async (tx) => {
         const existing = (await tx.query(`SELECT id, is_builtin, version FROM roles WHERE code = $1`, [code])).rows[0];
-        if (existing?.['is_builtin'] === true) throw forbidden('Role bawaan tidak bisa diubah');
+        if (existing?.['is_builtin'] === true && code === 'admin') {
+          if (principalOf(req).roleCode !== 'admin') throw forbidden('Hanya Admin dapat mengubah role Admin');
+          if (!b.permissions.includes('users.manage') || (b.menus.length && !b.menus.includes('settings')))
+            throw forbidden('Admin harus tetap dapat mengelola role melalui Settings');
+        }
         let id: number;
         if (!existing) {
           if (b.version !== undefined) throw notFound('Role tidak ada');

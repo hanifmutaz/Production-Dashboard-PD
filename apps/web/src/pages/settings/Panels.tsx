@@ -43,7 +43,8 @@ interface LineRec {
 
 export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; readonly onChange: () => void }) {
   const lines = useApi<LineRec[]>('/api/v3/lines/all');
-  const disc = useApi<string[]>('/api/v3/lines/discover');
+  const canEdit = useAuth().can('config.edit');
+  const disc = useApi<string[]>(canEdit ? '/api/v3/lines/discover' : null);
   const eff = useApi<{ line_discovery: { shift_scheme: number; location: string } }>('/api/v3/settings/effective');
   const save = useSaveSetting();
   const [editing, setEditing] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; r
       ) : null}
       <ListTable
         label="Line"
+        readOnly={!canEdit}
         rows={(lines.data ?? []).map((l) => ({
           id: l.line_code,
           active: l.active,
@@ -138,64 +140,66 @@ export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; r
             .catch((e: unknown) => setMsg([errText(e), true]));
         }}
       />
-      <section className="settings-card">
-        <header>
-          <div>
-            <h3>Line baru dari i-Reporter</h3>
-            <p>{disc.data ? `${disc.data.length} line ditemukan di ConMas yang belum terdaftar` : 'Memeriksa…'}</p>
-          </div>
-          <button
-            className="btn pri"
-            type="button"
-            disabled={!disc.data?.length}
-            onClick={() =>
-              api
-                .post<{ added: string[] }>('/api/v3/lines/sync')
-                .then((r) => (setMsg([`${r.data?.added.length ?? 0} line didaftarkan.`, false]), reload()))
-                .catch((e: unknown) => setMsg([errText(e), true]))
-            }
-          >
-            Daftarkan semua
-          </button>
-        </header>
-        {disc.data?.length ? <p className="settings-help">{disc.data.join(', ')}</p> : null}
-        {eff.data ? (
-          <form
-            className="settings-fields"
-            key={JSON.stringify(eff.data.line_discovery)}
-            onSubmit={(e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
-              save('line_discovery', { shift_scheme: Number(f.get('scheme')), location: String(f.get('location')) })
-                .then(() => (setMsg(['Default line baru disimpan.', false]), eff.reload()))
-                .catch((err: unknown) => setMsg([errText(err), true]));
-            }}
-          >
-            <div className="setting-field">
-              <label htmlFor="ld-scheme">Default skema shift line baru</label>
-              <select id="ld-scheme" name="scheme" defaultValue={String(eff.data.line_discovery.shift_scheme)}>
-                <option value="2">2 shift</option>
-                <option value="3">3 shift</option>
-              </select>
+      {canEdit && (
+        <section className="settings-card">
+          <header>
+            <div>
+              <h3>Line baru dari i-Reporter</h3>
+              <p>{disc.data ? `${disc.data.length} line ditemukan di ConMas yang belum terdaftar` : 'Memeriksa…'}</p>
             </div>
-            <div className="setting-field">
-              <label htmlFor="ld-loc">Default lokasi line baru</label>
-              <select id="ld-loc" name="location" defaultValue={eff.data.line_discovery.location}>
-                {SITES.map((s) => (
-                  <option key={s} value={s}>
-                    {siteName(s)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="settings-save">
-              <button className="btn" type="submit">
-                Simpan default
-              </button>
-            </div>
-          </form>
-        ) : null}
-      </section>
+            <button
+              className="btn pri"
+              type="button"
+              disabled={!disc.data?.length}
+              onClick={() =>
+                api
+                  .post<{ added: string[] }>('/api/v3/lines/sync')
+                  .then((r) => (setMsg([`${r.data?.added.length ?? 0} line didaftarkan.`, false]), reload()))
+                  .catch((e: unknown) => setMsg([errText(e), true]))
+              }
+            >
+              Daftarkan semua
+            </button>
+          </header>
+          {disc.data?.length ? <p className="settings-help">{disc.data.join(', ')}</p> : null}
+          {eff.data ? (
+            <form
+              className="settings-fields"
+              key={JSON.stringify(eff.data.line_discovery)}
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                save('line_discovery', { shift_scheme: Number(f.get('scheme')), location: String(f.get('location')) })
+                  .then(() => (setMsg(['Default line baru disimpan.', false]), eff.reload()))
+                  .catch((err: unknown) => setMsg([errText(err), true]));
+              }}
+            >
+              <div className="setting-field">
+                <label htmlFor="ld-scheme">Default skema shift line baru</label>
+                <select id="ld-scheme" name="scheme" defaultValue={String(eff.data.line_discovery.shift_scheme)}>
+                  <option value="2">2 shift</option>
+                  <option value="3">3 shift</option>
+                </select>
+              </div>
+              <div className="setting-field">
+                <label htmlFor="ld-loc">Default lokasi line baru</label>
+                <select id="ld-loc" name="location" defaultValue={eff.data.line_discovery.location}>
+                  {SITES.map((s) => (
+                    <option key={s} value={s}>
+                      {siteName(s)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="settings-save">
+                <button className="btn" type="submit">
+                  Simpan default
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </section>
+      )}
     </>
   );
 }
@@ -224,6 +228,7 @@ function MonthTargets({
   readonly period: string;
   readonly changePeriod: (month: string) => void;
 }) {
+  const canEdit = useAuth().can('config.edit');
   const [year, month] = period.split('-').map(Number);
   const query = `year=${year}&month=${month}`;
   const plan = useApi<Plan>(`/api/v3/planning?${query}`);
@@ -310,20 +315,23 @@ function MonthTargets({
         Batal
       </button>
     ) : null;
-  const input = (id: string, label: string, field: 'qty' | 'days') => (
-    <input
-      type="number"
-      aria-label={label}
-      min={field === 'days' ? 1 : 0}
-      max={field === 'days' ? 31 : 1000000000}
-      style={{ width: field === 'days' ? '5rem' : '10rem' }}
-      placeholder={field === 'qty' ? 'Belum ada target' : 'Hari'}
-      step="1"
-      disabled={!ready || busy}
-      value={value(id)[field]}
-      onChange={(e) => edit(id, { [field]: e.target.value })}
-    />
-  );
+  const input = (id: string, label: string, field: 'qty' | 'days') =>
+    !canEdit ? (
+      value(id)[field] || '—'
+    ) : (
+      <input
+        type="number"
+        aria-label={label}
+        min={field === 'days' ? 1 : 0}
+        max={field === 'days' ? 31 : 1000000000}
+        style={{ width: field === 'days' ? '5rem' : '10rem' }}
+        placeholder={field === 'qty' ? 'Belum ada target' : 'Hari'}
+        step="1"
+        disabled={!ready || busy}
+        value={value(id)[field]}
+        onChange={(e) => edit(id, { [field]: e.target.value })}
+      />
+    );
   const lines = new Map((master.data ?? []).filter((l) => l.location === 'internal').map((l) => [l.line_code, l.product]));
   // Keep previously planned lines accessible if the master record was removed.
   const known = new Set((master.data ?? []).map((l) => l.line_code));
@@ -356,7 +364,7 @@ function MonthTargets({
               <tr>
                 <th>Lokasi</th>
                 <th>Target bulanan (pcs)</th>
-                <th>Aksi</th>
+                {canEdit && <th>Aksi</th>}
               </tr>
             </thead>
             <tbody>
@@ -366,7 +374,7 @@ function MonthTargets({
                   <td>
                     {site === 'internal' || saved.has('loc:' + site) ? input('loc:' + site, `Target ${siteName(site)}`, 'qty') : 'On Hold'}
                   </td>
-                  <td>{undo('loc:' + site)}</td>
+                  {canEdit && <td>{undo('loc:' + site)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -376,9 +384,11 @@ function MonthTargets({
       <section className="settings-card settings-list">
         <header>
           <h3>Target per line · Hirose Internal</h3>
-          <button type="button" className="btn" disabled={!ready || busy || !pending.length} onClick={() => void save()}>
-            {busy ? 'Menyimpan…' : `Simpan perubahan${pending.length ? ` (${pending.length})` : ''}`}
-          </button>
+          {canEdit && (
+            <button type="button" className="btn" disabled={!ready || busy || !pending.length} onClick={() => void save()}>
+              {busy ? 'Menyimpan…' : `Simpan perubahan${pending.length ? ` (${pending.length})` : ''}`}
+            </button>
+          )}
         </header>
         <Feedback msg={error || message[0]} error={Boolean(error) || message[1]} />
         <div className="settings-tabs">
@@ -403,7 +413,7 @@ function MonthTargets({
                 <th>Hari kerja</th>
                 <th>Target/hari (pcs)</th>
                 <th>Catatan</th>
-                <th>Aksi</th>
+                {canEdit && <th>Aksi</th>}
               </tr>
             </thead>
             <tbody>
@@ -418,15 +428,19 @@ function MonthTargets({
                     <td>{input(id, `Hari kerja ${code}`, 'days')}</td>
                     <td>{d.qty !== '' && Number(d.days) > 0 ? fmt(Number(d.qty) / Number(d.days)) : '—'}</td>
                     <td>
-                      <input
-                        aria-label={`Catatan ${code}`}
-                        maxLength={130}
-                        value={d.note}
-                        disabled={!ready || busy}
-                        onChange={(e) => edit(id, { note: e.target.value })}
-                      />
+                      {canEdit ? (
+                        <input
+                          aria-label={`Catatan ${code}`}
+                          maxLength={130}
+                          value={d.note}
+                          disabled={!ready || busy}
+                          onChange={(e) => edit(id, { note: e.target.value })}
+                        />
+                      ) : (
+                        d.note || '—'
+                      )}
                     </td>
-                    <td>{undo(id)}</td>
+                    {canEdit && <td>{undo(id)}</td>}
                   </tr>
                 );
               })}
@@ -556,6 +570,7 @@ const PERM_LABEL: Readonly<Record<string, string>> = {
   'meeting.use': 'Mode Meeting',
   'dashboard.investigate': 'Detail investigasi (laporan mentah)',
   'export.run': 'Ekspor laporan',
+  'config.view': 'Lihat konfigurasi',
   'config.edit': 'Ubah konfigurasi',
   'users.manage': 'Kelola akun & role',
   'devices.manage': 'Kelola perangkat kiosk',
@@ -571,7 +586,7 @@ export function PermissionsPanel() {
         <h3>Hak akses per role</h3>
         <span className="settings-state">Diperiksa server</span>
       </header>
-      <p className="settings-help">Role bawaan tidak bisa diubah. Buat Custom Role untuk kombinasi lain.</p>
+      <p className="settings-help">Atur hak akses role bawaan dan custom melalui tab Kelola Role.</p>
       <div className="settings-table">
         <table>
           <thead>
@@ -589,7 +604,9 @@ export function PermissionsPanel() {
               <tr key={p}>
                 <th scope="row">{l}</th>
                 {list.map((r) => (
-                  <td key={r.code}>{r.permissions.includes(p) ? '✓' : '—'}</td>
+                  <td key={r.code}>
+                    {r.permissions.includes(p) || (p === 'config.view' && r.permissions.includes('config.edit')) ? '✓' : '—'}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -601,24 +618,90 @@ export function PermissionsPanel() {
 }
 
 // ---------- Custom Role (port rolePanel) ----------
+function RoleSettingsAccess({ role }: { readonly role: RoleRec | null }) {
+  const has = (p: string) => role?.permissions.includes(p) ?? false;
+  const writePermissions = ['config.edit', 'users.manage', 'devices.manage'];
+  const wasEditor = writePermissions.some(has);
+  const [level, setLevel] = useState(wasEditor ? 'edit' : has('config.view') || has('audit.view') ? 'view' : 'none');
+  return (
+    <section>
+      <h3>Settings</h3>
+      <label className="fld">
+        Akses Settings
+        <select name="settingsLevel" value={level} onChange={(e) => setLevel(e.target.value)}>
+          <option value="none" disabled={role?.code === 'admin'}>
+            Tanpa akses
+          </option>
+          <option value="view" disabled={role?.code === 'admin'}>
+            Hanya lihat
+          </option>
+          <option value="edit">Lihat dan edit</option>
+        </select>
+      </label>
+      {level !== 'none' && (
+        <>
+          {level === 'edit' &&
+            writePermissions.map((p) => (
+              <label className="ck" key={p}>
+                {PERM_LABEL[p]}
+                <input
+                  type="checkbox"
+                  name="settingsPermission"
+                  value={p}
+                  defaultChecked={has(p) || (p === 'config.edit' && !wasEditor)}
+                  disabled={role?.code === 'admin' && p === 'users.manage'}
+                />
+              </label>
+            ))}
+          <label className="ck">
+            Lihat konfigurasi produksi
+            <input
+              type="checkbox"
+              name="settingsPermission"
+              value="config.view"
+              defaultChecked={has('config.view') || has('config.edit') || (!wasEditor && !has('audit.view'))}
+            />
+          </label>
+          <label className="ck">
+            {PERM_LABEL['audit.view']}
+            <input type="checkbox" name="settingsPermission" value="audit.view" defaultChecked={has('audit.view')} />
+          </label>
+        </>
+      )}
+      {role?.code === 'admin' && <small>Admin selalu dapat mengelola akun dan role.</small>}
+    </section>
+  );
+}
+
 export function RolesPanel() {
+  const { can, refresh, me } = useAuth();
   const roles = useApi<RoleRec[]>('/api/v3/access/roles');
-  const audit = useApi<{ id: number; at: string; action: string; target: string | null }[]>('/api/v3/access/audit?limit=100');
+  const audit = useApi<{ id: number; at: string; action: string; target: string | null }[]>(
+    can('audit.view') ? '/api/v3/access/audit?limit=100' : null,
+  );
   const [edit, setEdit] = useState<RoleRec | null>(null);
   const [msg, setMsg] = useState<[string, boolean]>(['', false]);
-  const custom = (roles.data ?? []).filter((r) => !r.is_builtin);
+  const [revision, setRevision] = useState(0);
   const groups: [string, readonly (readonly [string, string])[]][] = [
     ['Dashboard', MENU_OPTIONS.slice(0, 3)],
     ['Produksi', MENU_OPTIONS.slice(3, 7)],
-    ['Laporan & administrasi', MENU_OPTIONS.slice(7)],
+    ['Laporan & administrasi', MENU_OPTIONS.slice(7).filter(([key]) => key !== 'settings')],
   ];
   const submit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const label = String(f.get('label') ?? '').trim();
     const menus = f.getAll('menus').map(String);
+    for (const key of edit?.menus ?? []) if (!MENU_OPTIONS.some(([id]) => id === key)) menus.push(key);
     if (!label) return setMsg(['Isi nama role.', true]);
-    if (!menus.length) return setMsg(['Pilih minimal satu akses.', true]);
+    const level = String(f.get('settingsLevel'));
+    const settings = f.getAll('settingsPermission').map(String);
+    if (edit?.code === 'admin') settings.push('users.manage');
+    if (level === 'edit' && !settings.some((p) => ['config.edit', 'users.manage', 'devices.manage'].includes(p)))
+      return setMsg(['Pilih bagian Settings yang boleh diubah.', true]);
+    if (level !== 'none' && !settings.length) return setMsg(['Pilih bagian Settings yang boleh dilihat.', true]);
+    if (settings.length) menus.push('settings');
+    if (!menus.length) return setMsg(['Pilih minimal satu menu.', true]);
     const code =
       edit?.code ??
       (label
@@ -627,13 +710,18 @@ export function RolesPanel() {
         .replace(/^-|-$/g, '')
         .slice(0, 40) ||
         `role-${Date.now().toString(36)}`);
-    const permissions = ['dashboard.view', 'meeting.use', ...(menus.includes('export') ? ['export.run'] : [])];
+    const permissions = [...f.getAll('permission').map(String), ...settings];
+    if (menus.some((m) => m !== 'settings') && !permissions.includes('dashboard.view'))
+      return setMsg(['Aktifkan izin lihat dashboard untuk menu dashboard yang dipilih.', true]);
+    if (menus.includes('export') && !permissions.includes('export.run'))
+      return setMsg(['Aktifkan izin ekspor untuk menu Export Data.', true]);
     api
       .put(`/api/v3/access/roles/${code}`, { name: label, permissions, menus, ...(edit ? { version: edit.version } : {}) })
       .then(() => {
         setMsg([`Role ${label} disimpan.`, false]);
         setEdit(null);
-        e.currentTarget?.reset();
+        setRevision((n) => n + 1);
+        if (me?.role === code) void refresh().catch(() => undefined);
         roles.reload();
         audit.reload();
       })
@@ -646,45 +734,44 @@ export function RolesPanel() {
       <div className="velvet-role-layout">
         <aside className="velvet-role-list">
           <h2>Roles &amp; Permissions</h2>
-          {['Admin', 'Supervisor', 'Viewer'].map((r) => (
-            <div className="sec" key={r}>
-              <b>{r}</b>
-              <small>Role bawaan</small>
-            </div>
-          ))}
-          {custom.map((r) => (
+          {(roles.data ?? []).map((r) => (
             <div className="sec" key={r.code}>
               <div>
                 <b>{r.name}</b>
-                <div className="sb">
-                  {r.menus.length} dari {MENU_OPTIONS.length} akses
-                </div>
+                <div className="sb">{r.is_builtin ? 'Role bawaan' : 'Role custom'}</div>
               </div>
               <div className="act">
-                <button className="btn" type="button" data-role-edit={r.code} onClick={() => setEdit(r)}>
-                  Edit
-                </button>
                 <button
                   className="btn"
                   type="button"
-                  data-role-delete={r.code}
-                  onClick={() =>
-                    api
-                      .del(`/api/v3/access/roles/${r.code}`)
-                      .then(() => (setMsg([`Role ${r.name} dihapus.`, false]), roles.reload(), audit.reload()))
-                      .catch((err: unknown) => setMsg([errText(err), true]))
-                  }
+                  data-role-edit={r.code}
+                  disabled={r.code === 'admin' && me?.role !== 'admin'}
+                  onClick={() => setEdit(r)}
                 >
-                  Hapus
+                  Edit
                 </button>
+                {!r.is_builtin && (
+                  <button
+                    className="btn"
+                    type="button"
+                    data-role-delete={r.code}
+                    onClick={() =>
+                      api
+                        .del(`/api/v3/access/roles/${r.code}`)
+                        .then(() => (setMsg([`Role ${r.name} dihapus.`, false]), roles.reload(), audit.reload()))
+                        .catch((err: unknown) => setMsg([errText(err), true]))
+                    }
+                  >
+                    Hapus
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </aside>
         <section className="card">
-          <h2>Custom Role</h2>
-          <p className="sb">Buat role atau pilih Edit. Role bawaan dilindungi.</p>
-          <form id="custom-role-form" key={edit?.code ?? 'new'} onSubmit={submit}>
+          <h2>{edit ? `Edit role · ${edit.name}` : 'Buat role'}</h2>
+          <form id="custom-role-form" key={`${edit?.code ?? 'new'}-${revision}`} onSubmit={submit}>
             <label className="fld">
               Nama role
               <input required name="label" maxLength={60} defaultValue={edit?.name ?? ''} />
@@ -696,31 +783,62 @@ export function RolesPanel() {
                   {items.map(([id, n]) => (
                     <label className="ck" key={id}>
                       {n}
-                      <input type="checkbox" name="menus" value={id} defaultChecked={edit?.menus.includes(id) ?? false} />
+                      <input
+                        type="checkbox"
+                        name="menus"
+                        value={id}
+                        defaultChecked={Boolean(
+                          edit &&
+                          (!edit.menus.length || edit.menus.includes(id)) &&
+                          (id !== 'export' || edit.permissions.includes('export.run')),
+                        )}
+                      />
                     </label>
                   ))}
                 </section>
               ))}
+              <section>
+                <h3>Fitur dashboard</h3>
+                {['dashboard.view', 'meeting.use', 'dashboard.investigate', 'export.run'].map((p) => (
+                  <label className="ck" key={p}>
+                    {PERM_LABEL[p]}
+                    <input
+                      type="checkbox"
+                      name="permission"
+                      value={p}
+                      defaultChecked={edit ? edit.permissions.includes(p) : ['dashboard.view', 'meeting.use'].includes(p)}
+                    />
+                  </label>
+                ))}
+              </section>
+              <RoleSettingsAccess role={edit} />
             </div>
+            {edit && (
+              <button className="btn" type="button" onClick={() => setEdit(null)}>
+                Batal
+              </button>
+            )}
             <button className="btn velvet-action">Simpan role</button>
           </form>
         </section>
       </div>
-      <section className="card velvet-audit">
-        <h2>Audit Log · Role &amp; Perangkat</h2>
-        {roleLog.length ? (
-          roleLog.slice(0, 20).map((x) => (
-            <p key={x.id}>
-              {x.action}
-              {x.target ? ` · ${x.target}` : ''}
-              <br />
-              <small>{new Date(x.at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</small>
-            </p>
-          ))
-        ) : (
-          <p>Belum ada perubahan role atau perangkat.</p>
-        )}
-      </section>
+      {can('audit.view') && (
+        <section className="card velvet-audit">
+          <h2>Audit Log · Role &amp; Perangkat</h2>
+          {roleLog.length ? (
+            roleLog.slice(0, 20).map((x) => (
+              <p key={x.id}>
+                {x.action}
+                {x.target ? ` · ${x.target}` : ''}
+                <br />
+                <small>{new Date(x.at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</small>
+              </p>
+            ))
+          ) : (
+            <p>Belum ada perubahan role atau perangkat.</p>
+          )}
+        </section>
+      )}
     </>
   );
 }
@@ -985,68 +1103,72 @@ export function AuditPanel() {
   return (
     <>
       <Feedback msg={msg[0]} error={msg[1]} />
-      <section className="settings-card">
-        <header>
-          <h3>Backup konfigurasi</h3>
-        </header>
-        <p className="settings-help">
-          Backup berisi pengaturan (Identitas, KPI, Tampilan, Mesin, Produk, Penyebab, Defect, Peringatan, status line). Akun, line, target
-          dan kalender ada di database — backup lewat pg_dump.
-        </p>
-        <div className="settings-backup">
-          <button className="btn" type="button" data-setting-backup onClick={backup}>
-            <Icon name="dl" size={16} /> Unduh JSON
-          </button>
-          <label htmlFor="settings-restore">
-            Pilih backup JSON
-            <input
-              id="settings-restore"
-              type="file"
-              accept=".json,application/json"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <button className="btn pri" type="button" data-setting-restore onClick={() => void restore()}>
-            Verifikasi &amp; pulihkan
-          </button>
-        </div>
-      </section>
-      <section className="settings-card">
-        <header>
-          <h3>Perubahan terbaru</h3>
-        </header>
-        <div className="settings-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Pengaturan</th>
-                <th>Aksi</th>
-                <th>Akun</th>
-                <th>Waktu</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audit.data?.length ? (
-                audit.data.map((r) => (
-                  <tr key={r.id}>
-                    <th scope="row">{r.target ?? '—'}</th>
-                    <td>{r.action}</td>
-                    <td>
-                      {r.actor_type}
-                      {r.actor_id ? ` #${r.actor_id}` : ''}
-                    </td>
-                    <td>{new Date(r.at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</td>
-                  </tr>
-                ))
-              ) : (
+      {can('config.edit') && (
+        <section className="settings-card">
+          <header>
+            <h3>Backup konfigurasi</h3>
+          </header>
+          <p className="settings-help">
+            Backup berisi pengaturan (Identitas, KPI, Tampilan, Mesin, Produk, Penyebab, Defect, Peringatan, status line). Akun, line,
+            target dan kalender ada di database — backup lewat pg_dump.
+          </p>
+          <div className="settings-backup">
+            <button className="btn" type="button" data-setting-backup onClick={backup}>
+              <Icon name="dl" size={16} /> Unduh JSON
+            </button>
+            <label htmlFor="settings-restore">
+              Pilih backup JSON
+              <input
+                id="settings-restore"
+                type="file"
+                accept=".json,application/json"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <button className="btn pri" type="button" data-setting-restore onClick={() => void restore()}>
+              Verifikasi &amp; pulihkan
+            </button>
+          </div>
+        </section>
+      )}
+      {can('audit.view') && (
+        <section className="settings-card">
+          <header>
+            <h3>Perubahan terbaru</h3>
+          </header>
+          <div className="settings-table">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={4}>{can('audit.view') ? 'Belum ada perubahan.' : 'Butuh izin audit.view.'}</td>
+                  <th>Pengaturan</th>
+                  <th>Aksi</th>
+                  <th>Akun</th>
+                  <th>Waktu</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {audit.data?.length ? (
+                  audit.data.map((r) => (
+                    <tr key={r.id}>
+                      <th scope="row">{r.target ?? '—'}</th>
+                      <td>{r.action}</td>
+                      <td>
+                        {r.actor_type}
+                        {r.actor_id ? ` #${r.actor_id}` : ''}
+                      </td>
+                      <td>{new Date(r.at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4}>{can('audit.view') ? 'Belum ada perubahan.' : 'Butuh izin audit.view.'}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </>
   );
 }

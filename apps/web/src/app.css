@@ -102,3 +102,6 @@
 /* Layar TV: sembunyikan scrollbar (isi digeser otomatis oleh TvAutoScroll). */
 html:has(.department-tv) { scrollbar-width: none; }
 html:has(.department-tv)::-webkit-scrollbar { display: none; }
+
+.settings-readonly { border: 0; margin: 0; padding: 0; min-width: 0; }
+.settings-readonly .settings-save { display: none; }

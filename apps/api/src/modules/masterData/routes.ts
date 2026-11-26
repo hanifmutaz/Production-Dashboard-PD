@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requirePermission } from '../../http/auth.js';
+import { canSeeLocation, principalOf, requirePermission } from '../../http/auth.js';
 import { isProductionLine } from './lineCodes.js';
 import { badRequest, notFound, parseInput } from '../../http/errors.js';
 import { lineCode, tempat, versionField } from '../../http/schemas.js';
@@ -14,18 +14,22 @@ import type { LinesRepository } from './linesRepository.js';
 export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, pool: DbPool, settings: SettingsService): Router {
   const r = Router();
 
-  r.get('/', requirePermission('dashboard.view'), async (_req, res, next) => {
+  r.get('/', requirePermission('dashboard.view', 'devices.manage'), async (req, res, next) => {
     try {
-      res.json({ data: await repo.listActive(), status: 'ok' });
+      const { locations } = principalOf(req);
+      const lines = (await repo.listActive()).filter((line) => canSeeLocation(locations, line.location));
+      res.json({ data: lines, status: 'ok' });
     } catch (e) {
       next(e);
     }
   });
 
   /** Semua line termasuk nonaktif (Settings → Master Produksi → Line). */
-  r.get('/all', requirePermission('config.edit'), async (_req, res, next) => {
+  r.get('/all', requirePermission('config.view'), async (req, res, next) => {
     try {
-      res.json({ data: await repo.listAll(), status: 'ok' });
+      const { locations } = principalOf(req);
+      const lines = (await repo.listAll()).filter((line) => canSeeLocation(locations, line.location));
+      res.json({ data: lines, status: 'ok' });
     } catch (e) {
       next(e);
     }

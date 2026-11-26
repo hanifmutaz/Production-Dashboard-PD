@@ -18,7 +18,7 @@ export function authenticate(auth: AuthService): RequestHandler {
         const p = await auth.resolveDevice(header.slice('Device '.length).trim());
         if (p) {
           if (p.screen === 'hub' || p.screen === 'executive') {
-            const common = req.path === '/auth/me' || req.path === '/settings';
+            const common = req.path === '/auth/me' || req.path === '/settings/runtime';
             const view =
               p.screen === 'executive'
                 ? req.path === '/executive/month'
@@ -50,12 +50,12 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
 };
 
 /** Otorisasi server-side (INV-004). Perangkat kiosk selalu read-only. */
-export function requirePermission(permission: Permission): RequestHandler {
+export function requirePermission(permission: Permission, ...alternatives: Permission[]): RequestHandler {
   return (req, _res, next) => {
     const p = req.principal;
     if (!p) return next(unauthorized());
     if (p.kind === 'device' && !SAFE_METHODS.has(req.method)) return next(forbidden('Perangkat kiosk hanya bisa melihat'));
-    if (!p.permissions.has(permission)) return next(forbidden());
+    if (!p.permissions.has(permission) && !alternatives.some((value) => p.permissions.has(value))) return next(forbidden());
     next();
   };
 }

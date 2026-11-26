@@ -25,7 +25,9 @@ function getDummyHash(): Promise<string> {
 
 function toPermissions(values: readonly unknown[]): Set<Permission> {
   const allowed = new Set<string>(ALL_PERMISSIONS);
-  return new Set(values.map(String).filter((v): v is Permission => allowed.has(v)));
+  const permissions = new Set(values.map(String).filter((v): v is Permission => allowed.has(v)));
+  if (permissions.has('config.edit')) permissions.add('config.view');
+  return permissions;
 }
 
 export async function loadUserPrincipal(db: Queryable, userId: number): Promise<Principal | null> {

@@ -66,7 +66,7 @@ export function executiveRoutes(svc: ExecutiveService, pool: DbPool): Router {
     }
   });
 
-  r.get('/calendar', requirePermission('dashboard.view'), async (req, res, next) => {
+  r.get('/calendar', requirePermission('dashboard.view', 'config.view'), async (req, res, next) => {
     try {
       const q = parseInput(z.object({ year, month, tempat }), req.query);
       if (!isTempat(q.tempat)) throw badRequest('tempat tidak valid');

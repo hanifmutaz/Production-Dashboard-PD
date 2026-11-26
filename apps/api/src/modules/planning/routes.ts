@@ -12,7 +12,7 @@ import { serializeTargetRow } from './serialize.js';
 export function planningRoutes(pool: DbPool): Router {
   const r = Router();
 
-  r.get('/', requirePermission('dashboard.view'), async (req, res, next) => {
+  r.get('/', requirePermission('dashboard.view', 'config.view'), async (req, res, next) => {
     try {
       const q = parseInput(z.object({ year, month }), req.query);
       const locations = await pool.query(

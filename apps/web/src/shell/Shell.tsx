@@ -87,7 +87,7 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
       ? siteName(route.site)
       : route.page === 'line'
         ? route.line
-        : route.page === 'settings' && !can('config.edit')
+        : route.page === 'settings' && !can('config.edit') && !can('users.manage') && !can('devices.manage')
           ? 'Akses lihat'
           : group;
 
@@ -196,9 +196,11 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
             ];
           })}
         </nav>
-        <nav id="settings-dock" className="foot" aria-label="Pengaturan">
-          {settingsLink}
-        </nav>
+        {allowed('settings') && (
+          <nav id="settings-dock" className="foot" aria-label="Pengaturan">
+            {settingsLink}
+          </nav>
+        )}
       </aside>
       <div className="scrim" id="scrim" aria-hidden="true" onClick={() => setDrawer(false)}></div>
       <div className="main">
@@ -256,7 +258,7 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
                 <p id="profile-description">
                   {me?.name} · {me?.role}
                 </p>
-                <div id="profile-settings">{settingsLink}</div>
+                {allowed('settings') && <div id="profile-settings">{settingsLink}</div>}
                 <button type="button" className="it" id="demo-logout" onClick={() => void logout()}>
                   Keluar
                 </button>

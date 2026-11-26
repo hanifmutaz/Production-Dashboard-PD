@@ -92,8 +92,43 @@ describe('otorisasi per role (INV-004)', () => {
     expect((await exp.put('/api/v3/settings/kpi', { value: {} })).status).toBe(403);
   });
 
-  it('role bawaan tidak bisa diubah', async () => {
-    expect((await admin.put('/api/v3/access/roles/admin', { name: 'x', permissions: [], menus: [] })).status).toBe(403);
+  it('izin Settings role bawaan berlaku pada sesi aktif untuk lihat, edit, dan cabut', async () => {
+    const url = '/api/v3/settings';
+    const change = (version: number, permissions: string[]) =>
+      admin.put('/api/v3/access/roles/viewer', {
+        name: 'Viewer',
+        version,
+        permissions: ['dashboard.view', ...permissions],
+        menus: ['hub', 'settings'],
+      });
+    expect((await viewer.get(url)).status).toBe(403);
+    h.dashboardDb.public.none(`INSERT INTO settings (key, value) VALUES ('config.display', '{}'), ('config.source', '{}')`);
+    const runtime = await viewer.get(url + '/runtime');
+    expect(runtime.status).toBe(200);
+    expect(runtime.body.data.map((row: { key: string }) => row.key)).toContain('config.display');
+    expect(runtime.body.data.map((row: { key: string }) => row.key)).not.toContain('config.source');
+    expect((await viewer.put('/api/v3/access/roles/viewer', {})).status).toBe(403);
+    expect((await change(1, ['config.view'])).status).toBe(200);
+    expect((await viewer.get(url)).status).toBe(200);
+    expect((await viewer.get('/api/v3/lines/all')).status).toBe(200);
+    expect((await viewer.put(url + '/kpi', { value: {} })).status).toBe(403);
+    expect((await viewer.get('/api/v3/access/users')).status).toBe(403);
+    expect((await change(1, ['config.edit'])).status).toBe(409);
+    expect((await change(2, ['config.edit'])).status).toBe(200);
+    expect((await viewer.put(url + '/kpi', { value: { oee: 80 } })).status).toBe(200);
+    expect((await change(3, [])).status).toBe(200);
+    expect((await viewer.get(url + '/effective')).status).toBe(403);
+    expect((await viewer.put(url + '/kpi', { value: {} })).status).toBe(403);
+    expect((await admin.delete('/api/v3/access/roles/viewer')).status).toBe(403);
+  });
+
+  it('Admin tetap bisa mengelola role', async () => {
+    const save = (permissions: string[], menus: string[]) =>
+      admin.put('/api/v3/access/roles/admin', { name: 'Admin Produksi', version: 1, permissions, menus });
+    expect((await save([], [])).status).toBe(403);
+    expect((await save(['users.manage'], ['hub'])).status).toBe(403);
+    expect((await save(['users.manage'], ['settings'])).status).toBe(200);
+    expect((await admin.get('/api/v3/access/roles')).status).toBe(200);
   });
 
   it('cakupan lokasi: user hanya internal ditolak melihat sgp', async () => {

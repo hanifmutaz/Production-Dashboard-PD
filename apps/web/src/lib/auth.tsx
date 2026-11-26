@@ -18,11 +18,27 @@ export interface Me {
   readonly now: string;
 }
 
+export function allowedRoute(me: Me | null, r: string): boolean {
+  if (!me) return false;
+  if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) return r === me.screen;
+  if (me.kind === 'device') return r === 'line' || (me.line !== null && r === `line-${me.line.toLowerCase()}`);
+  if (
+    r === 'settings' &&
+    !['config.view', 'config.edit', 'users.manage', 'devices.manage', 'audit.view'].some((p) => me.permissions.includes(p))
+  )
+    return false;
+  if (r === 'export' && !me.permissions.includes('export.run')) return false;
+  if (r !== 'settings' && !me.permissions.includes('dashboard.view')) return false;
+  if (!me.menus.length) return true;
+  return me.menus.some((m) => r === m || (['master', 'stoptime', 'monitoring-output', 'line'].includes(m) && r.startsWith(`${m}-`)));
+}
+
 interface AuthState {
   readonly me: Me | null;
   /** Port allowedRoute() mockup: Custom Role & perangkat kiosk. */
   allowed(route: string): boolean;
   readonly loading: boolean;
+  refresh(): Promise<void>;
   login(email: string, password: string): Promise<void>;
   logout(): Promise<void>;
   can(permission: string): boolean;
@@ -61,6 +77,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const value: AuthState = {
     me,
     loading,
+    refresh,
     async login(email, password) {
       await api.post('/api/v3/auth/login', { email, password });
       await refresh();
@@ -75,13 +92,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
       setMe(null);
     },
     can: (permission) => me?.permissions.includes(permission) ?? false,
-    allowed(r) {
-      if (!me) return false;
-      if (tv) return r === me.screen;
-      if (me.kind === 'device') return r === 'line' || (me.line !== null && r === `line-${me.line.toLowerCase()}`);
-      if (!me.menus.length) return true;
-      return me.menus.some((m) => r === m || (['master', 'stoptime', 'monitoring-output', 'line'].includes(m) && r.startsWith(`${m}-`)));
-    },
+    allowed: (r) => allowedRoute(me, r),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -194,6 +194,7 @@ export function ListTable({
   headerExtra,
   newLabel = 'Tambah',
   canToggle = true,
+  readOnly = false,
 }: {
   readonly label: string;
   readonly rows: readonly ListRow[];
@@ -203,6 +204,7 @@ export function ListTable({
   readonly headerExtra?: ReactNode;
   readonly newLabel?: string;
   readonly canToggle?: boolean;
+  readonly readOnly?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
@@ -220,7 +222,7 @@ export function ListTable({
           <p>{rows.filter((r) => r.active).length} aktif</p>
         </div>
         {headerExtra ??
-          (onNew ? (
+          (onNew && !readOnly ? (
             <button className="btn pri" type="button" data-setting-new onClick={onNew}>
               <Icon name="plus" size={16} /> {newLabel}
             </button>
@@ -246,7 +248,7 @@ export function ListTable({
             <tr>
               <th scope="col">Nama</th>
               <th scope="col">Status</th>
-              <th scope="col">Aksi</th>
+              {!readOnly && <th scope="col">Aksi</th>}
             </tr>
           </thead>
           <tbody>
@@ -260,25 +262,27 @@ export function ListTable({
                   <td>
                     <span className={`settings-state${r.active ? ' active' : ''}`}>{r.active ? 'Aktif' : 'Nonaktif'}</span>
                   </td>
-                  <td>
-                    <div className="settings-row-actions">
-                      {onEdit ? (
-                        <button className="btn" type="button" aria-label={`Edit ${r.title}`} onClick={() => onEdit(r.id)}>
-                          <Icon name="edit" size={14} /> Edit
-                        </button>
-                      ) : null}
-                      {onToggle && canToggle ? (
-                        <button
-                          className="btn"
-                          type="button"
-                          aria-label={`${r.active ? 'Nonaktifkan' : 'Aktifkan'} ${r.title}`}
-                          onClick={() => onToggle(r.id)}
-                        >
-                          {r.active ? 'Nonaktifkan' : 'Aktifkan'}
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
+                  {!readOnly && (
+                    <td>
+                      <div className="settings-row-actions">
+                        {onEdit ? (
+                          <button className="btn" type="button" aria-label={`Edit ${r.title}`} onClick={() => onEdit(r.id)}>
+                            <Icon name="edit" size={14} /> Edit
+                          </button>
+                        ) : null}
+                        {onToggle && canToggle ? (
+                          <button
+                            className="btn"
+                            type="button"
+                            aria-label={`${r.active ? 'Nonaktifkan' : 'Aktifkan'} ${r.title}`}
+                            onClick={() => onToggle(r.id)}
+                          >
+                            {r.active ? 'Nonaktifkan' : 'Aktifkan'}
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             ) : (

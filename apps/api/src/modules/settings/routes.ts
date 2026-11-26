@@ -14,14 +14,26 @@ const settingKey = z.string().regex(/^[a-z][a-z0-9_.-]{1,60}$/);
 export function settingsRoutes(pool: DbPool, svc: SettingsService): Router {
   const r = Router();
 
-  r.get('/', requirePermission('dashboard.view'), async (req, res, next) => {
+  r.get('/runtime', requirePermission('dashboard.view'), async (req, res, next) => {
     try {
       const screen = req.principal?.screen;
-      const filter =
-        screen === 'hub' || screen === 'executive'
-          ? " WHERE key IN ('config.general', 'config.display', 'config.kpi', 'config.alerts')"
-          : '';
-      const { rows } = await pool.query(`SELECT key, value, version, updated_at FROM settings${filter} ORDER BY key`);
+      const includeMachines = screen !== 'hub' && screen !== 'executive';
+      const { rows } = await pool.query(
+        `SELECT key, value, version, updated_at FROM settings
+         WHERE key IN ('config.general', 'config.display', 'config.kpi', 'config.alerts')
+            OR (key = 'config.machines' AND $1::boolean)
+         ORDER BY key`,
+        [includeMachines],
+      );
+      res.json({ data: rows, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.get('/', requirePermission('config.view'), async (_req, res, next) => {
+    try {
+      const { rows } = await pool.query('SELECT key, value, version, updated_at FROM settings ORDER BY key');
       res.json({ data: rows, status: 'ok' });
     } catch (e) {
       next(e);
@@ -29,7 +41,7 @@ export function settingsRoutes(pool: DbPool, svc: SettingsService): Router {
   });
 
   /** Nilai efektif settings yang dipakai logika (termasuk default bila belum pernah disimpan). */
-  r.get('/effective', requirePermission('dashboard.view'), async (_req, res, next) => {
+  r.get('/effective', requirePermission('config.view'), async (_req, res, next) => {
     try {
       res.json({
         data: { line_status: await svc.lineStatus(), line_discovery: await svc.lineDiscovery(), shift: svc.shiftConfig() },

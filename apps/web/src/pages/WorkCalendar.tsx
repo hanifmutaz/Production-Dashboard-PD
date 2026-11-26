@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../lib/auth';
 import { api, ApiError } from '../lib/api';
 import { fd, MON } from '../lib/format';
 import { siteName } from '../lib/sites';
@@ -24,6 +25,7 @@ export interface WorkCalendarProps {
 }
 
 export function WorkCalendar({ site, year, month, onClose }: WorkCalendarProps) {
+  const canEdit = useAuth().can('config.edit');
   const ref = useRef<HTMLDialogElement>(null);
   const [base, setBase] = useState<{ holidays: Set<string>; version: number | null } | null>(null);
   const [changes, setChanges] = useState<Map<string, DayType>>(new Map());
@@ -54,7 +56,7 @@ export function WorkCalendar({ site, year, month, onClose }: WorkCalendarProps) 
   };
 
   const save = async (): Promise<void> => {
-    if (!base || changes.size === 0 || busy) return;
+    if (!canEdit || !base || changes.size === 0 || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -82,7 +84,7 @@ export function WorkCalendar({ site, year, month, onClose }: WorkCalendarProps) 
           <p id="work-calendar-context">
             {siteName(site)} · {MON[month - 1]} {year}
           </p>
-          <p>Klik tanggal libur. Klik lagi untuk menjadikannya hari kerja.</p>
+          {canEdit && <p>Klik tanggal libur. Klik lagi untuk menjadikannya hari kerja.</p>}
         </div>
         <form method="dialog">
           <button type="submit" className="btn" aria-label="Tutup kalender kerja">
@@ -119,6 +121,7 @@ export function WorkCalendar({ site, year, month, onClose }: WorkCalendarProps) 
                     data-type={t}
                     aria-pressed={t === 'holiday'}
                     aria-label={`${fd(d)} · ${LABELS[t]}`}
+                    disabled={!canEdit}
                     onClick={() => toggle(d)}
                   >
                     <b>{Number(d.slice(8))}</b>
@@ -131,14 +134,22 @@ export function WorkCalendar({ site, year, month, onClose }: WorkCalendarProps) 
         <p id="work-calendar-error" role="alert">
           {error}
         </p>
-        <footer>
-          <button type="button" className="btn" id="work-calendar-reset" hidden={changes.size === 0} onClick={() => setChanges(new Map())}>
-            Urungkan pilihan
-          </button>
-          <button className="btn pri" type="submit" id="work-calendar-save" disabled={changes.size === 0 || busy}>
-            Simpan kalender
-          </button>
-        </footer>
+        {canEdit && (
+          <footer>
+            <button
+              type="button"
+              className="btn"
+              id="work-calendar-reset"
+              hidden={changes.size === 0}
+              onClick={() => setChanges(new Map())}
+            >
+              Urungkan pilihan
+            </button>
+            <button className="btn pri" type="submit" id="work-calendar-save" disabled={changes.size === 0 || busy}>
+              Simpan kalender
+            </button>
+          </footer>
+        )}
       </form>
     </dialog>
   );

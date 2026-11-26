@@ -20,8 +20,20 @@ function routeKey(r: Route): string {
   return 'site' in r ? `${r.page}-${r.site}` : r.page === 'line' ? `line-${r.line.toLowerCase()}` : r.page;
 }
 
-const WIB_TIME = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-const WIB_DATE = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const WIB_TIME = new Intl.DateTimeFormat('id-ID', {
+  timeZone: 'Asia/Jakarta',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+const WIB_DATE = new Intl.DateTimeFormat('id-ID', {
+  timeZone: 'Asia/Jakarta',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
 
 /** Header layar TV Departemen: judul besar terbaca dari jauh + jam WIB + status perangkat. */
 function TvHeader({ title, device }: { readonly title: string; readonly device: string }) {
@@ -52,7 +64,7 @@ function TvHeader({ title, device }: { readonly title: string; readonly device: 
 }
 
 export function App() {
-  const { me, loading, allowed, can } = useAuth();
+  const { me, loading, allowed, logout } = useAuth();
   const { raw } = useConfig();
   const parsed = useRoute();
   if (loading) return null;
@@ -73,10 +85,19 @@ export function App() {
     );
   }
   if (me.kind === 'device') route = { page: 'line', line: me.line ?? '' };
-  else if (!allowed(routeKey(route)) || (route.page === 'export' && !can('export.run'))) {
+  else if (!allowed(routeKey(route))) {
     // Urutan menu mengikuti daftar menu mockup (bukan urutan abjad dari server).
     const order = MENU_OPTIONS.map(([k]) => k);
-    const first = [...me.menus].sort((a, b) => order.indexOf(a) - order.indexOf(b))[0] ?? 'executive';
+    const first = order.find((key) => key !== 'line' && allowed(key));
+    if (!first)
+      return (
+        <main className="page">
+          <p>Role ini belum memiliki halaman awal yang dapat diakses.</p>
+          <button className="btn" onClick={() => void logout()}>
+            Keluar
+          </button>
+        </main>
+      );
     route =
       first === 'master' || first === 'stoptime'
         ? { page: first, site: 'internal' }

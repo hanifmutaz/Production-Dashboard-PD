@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { useAuth } from './auth';
 import { useApi } from './useApi';
 import type { Thresholds } from './achievement';
 
@@ -28,7 +29,9 @@ export interface Config {
 const Ctx = createContext<Config | null>(null);
 
 export function ConfigProvider({ children, enabled = true }: { readonly children: ReactNode; readonly enabled?: boolean }) {
-  const res = useApi<SettingRow[]>(enabled ? '/api/v3/settings' : null);
+  const { can } = useAuth();
+  const source = can('config.view') ? '/api/v3/settings' : can('dashboard.view') ? '/api/v3/settings/runtime' : null;
+  const res = useApi<SettingRow[]>(enabled ? source : null);
   const raw = new Map((res.data ?? []).map((r) => [r.key, r]));
   const kpiValue = raw.get('config.kpi')?.value as Partial<KpiRules> | undefined;
   const general = raw.get('config.general')?.value as { name?: string; department?: string } | undefined;
