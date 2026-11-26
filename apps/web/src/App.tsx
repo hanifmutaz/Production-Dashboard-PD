@@ -14,6 +14,7 @@ import { Monitoring } from './pages/Monitoring';
 import { Settings } from './pages/settings/Settings';
 import { Stoptime } from './pages/Stoptime';
 import { MENU_OPTIONS } from './pages/settings/spec';
+import { TvAutoScroll } from './components/TvAutoScroll';
 
 function routeKey(r: Route): string {
   return 'site' in r ? `${r.page}-${r.site}` : r.page === 'line' ? `line-${r.line.toLowerCase()}` : r.page;
@@ -66,6 +67,7 @@ export function App() {
     return (
       <main id="view" className="department-tv" data-tv={me.screen} key={`${me.screen}-${me.today}`}>
         <TvHeader title={me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'} device={me.name} />
+        <TvAutoScroll />
         {me.screen === 'hub' ? <Hub /> : <Executive />}
       </main>
     );

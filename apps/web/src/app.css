@@ -96,5 +96,9 @@
 }
 
 /* ---- TV Departemen: perbesar isi dashboard agar terbaca dari jauh (layar TV ditonton dari beberapa meter) ---- */
-.department-tv[data-tv="executive"] > .page { zoom: 1.5; }
-.department-tv[data-tv="hub"] > .page { zoom: 1.3; }
+.department-tv[data-tv="executive"] > .page { zoom: 1.7; }
+.department-tv[data-tv="hub"] > .page { zoom: 1.45; }
+
+/* Layar TV: sembunyikan scrollbar (isi digeser otomatis oleh TvAutoScroll). */
+html:has(.department-tv) { scrollbar-width: none; }
+html:has(.department-tv)::-webkit-scrollbar { display: none; }
