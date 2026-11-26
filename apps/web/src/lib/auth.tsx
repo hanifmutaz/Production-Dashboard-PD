@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError } from './api';
 
 export interface Me {
@@ -50,14 +50,17 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const latest = useRef(0);
   const refresh = useCallback(async () => {
+    const request = ++latest.current;
     try {
-      setMe((await api.get<Me>('/api/v3/auth/me')).data);
+      const { data } = await api.get<Me>('/api/v3/auth/me');
+      if (request === latest.current) setMe(data);
     } catch (e) {
       if (!(e instanceof ApiError && e.status === 401)) throw e;
-      setMe(null);
+      if (request === latest.current) setMe(null);
     } finally {
-      setLoading(false);
+      if (request === latest.current) setLoading(false);
     }
   }, []);
 
@@ -66,13 +69,23 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
   }, [refresh]);
 
   const tv = me?.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive');
+  const user = me?.kind === 'user';
   useEffect(() => {
-    if (!tv) return;
-    const timer = window.setInterval(() => {
-      void refresh().catch(() => undefined);
-    }, 60_000);
-    return () => window.clearInterval(timer);
-  }, [tv, refresh]);
+    if (!user && !tv) return;
+    const update = (): void => {
+      if (tv || document.visibilityState === 'visible') void refresh().catch(() => undefined);
+    };
+    const timer = window.setInterval(update, 60_000);
+    if (user) {
+      window.addEventListener('focus', update);
+      document.addEventListener('visibilitychange', update);
+    }
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', update);
+      document.removeEventListener('visibilitychange', update);
+    };
+  }, [user, tv, refresh]);
 
   const value: AuthState = {
     me,
@@ -89,6 +102,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
       } catch {
         /* abaikan */
       }
+      latest.current++;
       setMe(null);
     },
     can: (permission) => me?.permissions.includes(permission) ?? false,
