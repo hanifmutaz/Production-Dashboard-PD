@@ -21,3 +21,9 @@ npm run dev                               # API di http://localhost:3000
 Coba UI tanpa database sama sekali: `npm run dev:mem` → http://localhost:3000 (login `admin` / `admin12345`, data fixture sintetis).
 
 Dev dengan Postgres lokal tanpa DB ConMas: `DEV_FIXTURE_DATABASE_URL=postgres://.../dev npm run db:seed:dev`, lalu `DB_VIEW_NAME=view_report_dev`.
+
+## Daftar akun mandiri + approval admin
+- Pengguna baru daftar sendiri lewat tombol **Daftar** di halaman login (email, nama, departemen, kebutuhan, password). Akun berstatus `pending` dan **belum bisa login**.
+- Admin (izin `users.manage`) menyetujui/menolak di **Settings → Pengguna & Akses → Pendaftaran**; role & cakupan lokasi ditentukan admin saat menyetujui. Pendaftar tidak bisa memilih role sendiri.
+- Email yang ditolak boleh mendaftar ulang. Semua aksi tercatat di audit log (`user.register`, `user.registration.approve/reject`).
+- Migrasi baru: `1732800000000_user_registration.sql` (jalankan `npm run db:migrate`). Akun yang sudah ada otomatis `approved`.

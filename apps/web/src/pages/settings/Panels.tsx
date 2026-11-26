@@ -475,6 +475,132 @@ interface RoleRec {
 
 const locList = (v: string[] | string): string[] => (Array.isArray(v) ? v : String(v).replace(/[{}"]/g, '').split(',').filter(Boolean));
 
+interface RegistrationRec {
+  readonly id: number;
+  readonly email: string;
+  readonly display_name: string;
+  readonly department: string | null;
+  readonly purpose: string | null;
+  readonly created_at: string;
+  readonly version: number;
+}
+
+/** Antrean pendaftaran mandiri: admin menentukan role & lokasi saat menyetujui, atau menolak dengan catatan. */
+export function RegistrationsPanel({ onChange }: { readonly onChange?: () => void }) {
+  const regs = useApi<RegistrationRec[]>('/api/v3/access/registrations');
+  const roles = useApi<RoleRec[]>('/api/v3/access/roles');
+  const [msg, setMsg] = useState<[string, boolean]>(['', false]);
+  const [busy, setBusy] = useState<number | null>(null);
+  const rows = regs.data ?? [];
+
+  const act = async (rec: RegistrationRec, kind: 'approve' | 'reject', form: HTMLFormElement): Promise<void> => {
+    if (busy !== null) return;
+    const f = new FormData(form);
+    setBusy(rec.id);
+    try {
+      if (kind === 'approve') {
+        await api.post(`/api/v3/access/registrations/${rec.id}/approve`, {
+          role: String(f.get('role') ?? 'viewer'),
+          locations: f.get('site') ? [String(f.get('site'))] : [],
+          version: rec.version,
+        });
+        setMsg([`${rec.email} disetujui. Akun sudah bisa dipakai login.`, false]);
+      } else {
+        const note = String(f.get('note') ?? '').trim();
+        await api.post(`/api/v3/access/registrations/${rec.id}/reject`, { ...(note ? { note } : {}), version: rec.version });
+        setMsg([`Pendaftaran ${rec.email} ditolak.`, false]);
+      }
+    } catch (e) {
+      setMsg([errText(e, 'Gagal memproses pendaftaran.'), true]);
+    } finally {
+      setBusy(null);
+      regs.reload();
+      onChange?.();
+    }
+  };
+
+  return (
+    <>
+      <Feedback msg={msg[0]} error={msg[1]} />
+      {regs.error ? <Feedback msg={regs.error} error /> : null}
+      {!regs.loading && !regs.error && rows.length === 0 ? (
+        <section className="settings-card">
+          <header>
+            <div>
+              <h3>Pendaftaran</h3>
+              <p>Tidak ada pendaftaran yang menunggu persetujuan.</p>
+            </div>
+          </header>
+        </section>
+      ) : null}
+      {rows.map((rec) => (
+        <section className="settings-card" key={rec.id} data-registration={rec.id}>
+          <header>
+            <div>
+              <h3>{rec.display_name}</h3>
+              <p>
+                {rec.email} · {rec.department ?? '—'} ·{' '}
+                {new Date(rec.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+              </p>
+            </div>
+            <span className="settings-state">Menunggu</span>
+          </header>
+          <p className="settings-help">
+            <b>Kebutuhan:</b> {rec.purpose ?? '—'}
+          </p>
+          <form onSubmit={(e) => e.preventDefault()}>
+            <div className="settings-fields">
+              <div className="setting-field">
+                <label htmlFor={`reg-role-${rec.id}`}>Role</label>
+                <select id={`reg-role-${rec.id}`} name="role" defaultValue="viewer">
+                  {(roles.data ?? []).map((r) => (
+                    <option key={r.code} value={r.code}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="setting-field">
+                <label htmlFor={`reg-site-${rec.id}`}>Cakupan lokasi</label>
+                <select id={`reg-site-${rec.id}`} name="site" defaultValue="">
+                  <option value="">Semua lokasi</option>
+                  {SITES.map((s) => (
+                    <option key={s} value={s}>
+                      {siteName(s)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="setting-field">
+                <label htmlFor={`reg-note-${rec.id}`}>Catatan penolakan (opsional)</label>
+                <input id={`reg-note-${rec.id}`} name="note" type="text" maxLength={300} />
+              </div>
+            </div>
+            <div className="settings-save">
+              <button
+                className="btn"
+                type="button"
+                disabled={busy !== null}
+                onClick={(e) => void act(rec, 'reject', e.currentTarget.form as HTMLFormElement)}
+              >
+                Tolak
+              </button>
+              <button
+                className="btn pri"
+                type="button"
+                disabled={busy !== null}
+                onClick={(e) => void act(rec, 'approve', e.currentTarget.form as HTMLFormElement)}
+              >
+                Setujui
+              </button>
+            </div>
+          </form>
+        </section>
+      ))}
+    </>
+  );
+}
+
 export function UsersPanel() {
   const users = useApi<UserRec[]>('/api/v3/access/users');
   const roles = useApi<RoleRec[]>('/api/v3/access/roles');

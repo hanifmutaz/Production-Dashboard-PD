@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useConfig } from '../lib/kpi';
 import { Icon } from '../lib/icons';
 import { isDarkTheme, toggleTheme } from '../lib/theme';
+import { RegisterForm } from './Register';
 
 // Layout login mockup. Pilihan role demo DIGANTI username/password (login asli di server).
 export function Login() {
@@ -13,6 +14,7 @@ export function Login() {
   const [error, setError] = useState('');
   const [pairMsg, setPairMsg] = useState('');
   const [dark, setDark] = useState(isDarkTheme);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
 
   const submit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -62,7 +64,7 @@ export function Login() {
         <div className="login-content">
           <header>
             <div className="login-toolbar">
-              <span className="login-demo">Login</span>
+              <span className="login-demo">{mode === 'login' ? 'Login' : 'Daftar'}</span>
               <button
                 className="ib"
                 id="login-theme"
@@ -78,40 +80,52 @@ export function Login() {
               </button>
             </div>
             <h1 className="login-title" id="login-title">
-              Masuk ke dashboard
+              {mode === 'login' ? 'Masuk ke dashboard' : 'Daftar akun baru'}
             </h1>
           </header>
-          <form id="demo-login-form" className="login-form" onSubmit={(e) => void submit(e)}>
-            <label className="fld">
-              Email
-              <input name="email" type="email" required autoComplete="username" autoCapitalize="none" maxLength={254} />
-            </label>
-            <label className="fld">
-              Password
-              <input name="password" type="password" required autoComplete="current-password" maxLength={200} />
-            </label>
-            <button type="submit" className="btn pri login-submit" id="demo-enter" disabled={busy} aria-busy={busy}>
-              {busy ? 'Memproses…' : 'Masuk'}
-            </button>
-            <p className="sb" role="alert">
-              {error}
-            </p>
-          </form>
-          <form id="pair-form" className="login-form" onSubmit={(e) => void pair(e)}>
-            <label className="fld">
-              Device Pairing Code
-              <input name="code" required placeholder="XXXX-XXXX" autoComplete="off" />
-            </label>
-            <button className="btn login-submit">Hubungkan perangkat</button>
-            <p className="sb" id="pair-error" role="alert">
-              {pairMsg}
-            </p>
-          </form>
+          {mode === 'register' ? (
+            <RegisterForm onBack={() => setMode('login')} />
+          ) : (
+            <>
+              <form id="demo-login-form" className="login-form" onSubmit={(e) => void submit(e)}>
+                <label className="fld">
+                  Email
+                  <input name="email" type="email" required autoComplete="username" autoCapitalize="none" maxLength={254} />
+                </label>
+                <label className="fld">
+                  Password
+                  <input name="password" type="password" required autoComplete="current-password" maxLength={200} />
+                </label>
+                <button type="submit" className="btn pri login-submit" id="demo-enter" disabled={busy} aria-busy={busy}>
+                  {busy ? 'Memproses…' : 'Masuk'}
+                </button>
+                <p className="sb" role="alert">
+                  {error}
+                </p>
+                <p className="login-switch">
+                  Belum punya akun?
+                  <button type="button" onClick={() => setMode('register')}>
+                    Daftar
+                  </button>
+                </p>
+              </form>
+              <form id="pair-form" className="login-form" onSubmit={(e) => void pair(e)}>
+                <label className="fld">
+                  Device Pairing Code
+                  <input name="code" required placeholder="XXXX-XXXX" autoComplete="off" />
+                </label>
+                <button className="btn login-submit">Hubungkan perangkat</button>
+                <p className="sb" id="pair-error" role="alert">
+                  {pairMsg}
+                </p>
+              </form>
+            </>
+          )}
           <p className="login-notice">
             <span aria-hidden="true">
               <Icon name="shield" />
             </span>
-            Akses dicatat di audit log. Hubungi admin bila lupa password.
+            Akses dicatat di audit log. Akun baru perlu disetujui admin. Hubungi admin bila lupa password.
           </p>
         </div>
       </div>

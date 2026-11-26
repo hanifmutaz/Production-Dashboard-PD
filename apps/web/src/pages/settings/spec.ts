@@ -51,6 +51,7 @@ export const SETTINGS_GROUPS: Readonly<Record<string, readonly (readonly [string
   ],
   access: [
     ['users', 'Akun'],
+    ['registrations', 'Pendaftaran'],
     ['permissions', 'Hak akses'],
     ['customRoles', 'Kelola Role'],
     ['devices', 'Device Management'],

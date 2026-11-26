@@ -7,6 +7,7 @@ import { AppError, parseInput } from '../../http/errors.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { recordAudit } from '../audit/auditService.js';
 import type { AuthService } from './authService.js';
+import { REGISTER_ACCEPTED_MESSAGE, registerSchema, registerUser } from './registration.js';
 import { hashToken, newToken } from './tokens.js';
 
 export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure: boolean; clock?: () => number }): Router {
@@ -25,6 +26,17 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
         data: { name: principal.name, role: principal.roleCode, permissions: [...principal.permissions], locations: principal.locations },
         status: 'ok',
       });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // Daftar akun mandiri (publik, tanpa login). Akun baru 'pending' sampai disetujui admin.
+  const registerLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 10, standardHeaders: true, legacyHeaders: false });
+  r.post('/register', registerLimiter, async (req, res, next) => {
+    try {
+      await registerUser(pool, parseInput(registerSchema, req.body), req);
+      res.status(202).json({ data: { message: REGISTER_ACCEPTED_MESSAGE }, status: 'ok' });
     } catch (e) {
       next(e);
     }

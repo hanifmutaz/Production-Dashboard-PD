@@ -2,7 +2,9 @@
 
 /* Login asli (username/password) menggantikan pilihan role demo. Field baru memakai gaya
    field "Device Pairing Code" yang sudah ada di mockup (#pair-form input) agar seragam. */
-#demo-login-form .fld input {
+#demo-login-form .fld input,
+#register-form .fld input,
+#register-form .fld textarea {
   width: 100%;
   min-height: 40px;
   border: 1px solid var(--bd);
@@ -11,7 +13,12 @@
   background: var(--pan);
   color: var(--tx);
 }
-#demo-login-form .fld + .fld { margin-top: 12px; }
+#demo-login-form .fld + .fld,
+#register-form .fld + .fld { margin-top: 12px; }
+#register-form .fld textarea { min-height: 84px; resize: vertical; }
+.hp-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.login-switch { margin-top: 14px; font-size: 13px; color: var(--dim); }
+.login-switch button { background: none; border: 0; padding: 0 0 0 6px; color: var(--acc); font: inherit; font-weight: 700; cursor: pointer; }
 
 /* Native form controls inherit the dashboard palette in both themes. */
 :where(#root) :where(input:not([type]), input[type="text"], input[type="month"], input[type="date"], input[type="number"], input[type="search"], select, textarea) {

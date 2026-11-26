@@ -11,7 +11,16 @@ import { siteName, SITES } from '../../lib/sites';
 import { useApi } from '../../lib/useApi';
 import { WorkCalendar } from '../WorkCalendar';
 import { Editor, ListTable, type Lookups } from './Fields';
-import { AuditPanel, DevicesPanel, LinesPanel, PermissionsPanel, PlanningPanel, RolesPanel, UsersPanel } from './Panels';
+import {
+  AuditPanel,
+  DevicesPanel,
+  LinesPanel,
+  PermissionsPanel,
+  PlanningPanel,
+  RegistrationsPanel,
+  RolesPanel,
+  UsersPanel,
+} from './Panels';
 import { DEFAULTS, LIST_DEFAULT_ROWS, SETTINGS_GROUPS, SETTINGS_SECTIONS, SPEC } from './spec';
 
 type Rows = Record<string, unknown>[];
@@ -389,6 +398,8 @@ export function Settings() {
   const lines = useApi<{ line_code: string; product: string; location: string }[]>(
     can('config.view') ? '/api/v3/lines/all' : can('devices.manage') ? '/api/v3/lines' : null,
   );
+  const pendingRegs = useApi<{ pending: number }>(can('users.manage') ? '/api/v3/access/registrations/count' : null);
+  const pendingCount = pendingRegs.data?.pending ?? 0;
   if (!sections.length) return null;
   const key = groups ? (groups.find(([id]) => id === group[section])?.[0] ?? groups[0]?.[0] ?? section) : section;
   const products = ((raw.get('config.products')?.value as { rows?: Rows } | undefined)?.rows ?? [])
@@ -437,6 +448,9 @@ export function Settings() {
     case 'users':
       body = <UsersPanel />;
       break;
+    case 'registrations':
+      body = <RegistrationsPanel onChange={pendingRegs.reload} />;
+      break;
     case 'permissions':
       body = <PermissionsPanel />;
       break;
@@ -480,6 +494,7 @@ export function Settings() {
               >
                 <Icon name={icon} size={17} />
                 <span>{l}</span>
+                {id === 'access' && pendingCount > 0 ? <span className="settings-state active">{pendingCount}</span> : null}
               </button>
             ))}
           </nav>
@@ -500,6 +515,7 @@ export function Settings() {
                     onClick={() => setGroup({ ...group, [section]: id })}
                   >
                     {l}
+                    {id === 'registrations' && pendingCount > 0 ? <span className="settings-state active"> {pendingCount}</span> : null}
                   </button>
                 ))}
               </div>

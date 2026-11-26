@@ -107,7 +107,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     try {
       // Tanpa array_agg agar portabel (pg-mem & Postgres); cakupan lokasi digabung di aplikasi.
       const { rows } = await pool.query(
-        `SELECT u.id, u.username, u.email, u.display_name, r.code AS role, u.active, u.locked_until, u.version FROM users u JOIN roles r ON r.id = u.role_id ORDER BY u.username`,
+        `SELECT u.id, u.username, u.email, u.display_name, r.code AS role, u.active, u.locked_until, u.version FROM users u JOIN roles r ON r.id = u.role_id WHERE u.status = 'approved' ORDER BY u.username`,
       );
       const scope = await pool.query(`SELECT user_id, location FROM user_site_scope ORDER BY location`);
       const byUser = new Map<number, string[]>();
@@ -182,7 +182,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           `UPDATE users SET email = COALESCE($7, email), display_name = COALESCE($2, display_name), role_id = COALESCE($3, role_id), active = COALESCE($4, active),
              password_hash = COALESCE($5, password_hash), failed_attempts = CASE WHEN $5::text IS NULL THEN failed_attempts ELSE 0 END,
              locked_until = CASE WHEN $5::text IS NULL THEN locked_until ELSE NULL END, version = version + 1, updated_at = now()
-           WHERE id = $1 AND version = $6 RETURNING id`,
+           WHERE id = $1 AND version = $6 AND status = 'approved' RETURNING id`,
           [id, b.display_name ?? null, roleId ?? null, b.active ?? null, hash, b.version, b.email ?? null],
         );
         if (!upd.rows[0]) throw conflict();
@@ -201,6 +201,84 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
       res.json({ data: { id }, status: 'ok' });
     } catch (e) {
       next(isUniqueViolation(e) ? conflict('Email sudah dipakai') : e);
+    }
+  });
+
+  // ---- Pendaftaran mandiri: antrean approval ----
+  r.get('/registrations', manageUsers, async (req, res, next) => {
+    try {
+      const q = parseInput(z.object({ status: z.enum(['pending', 'rejected']).default('pending') }), req.query);
+      const { rows } = await pool.query(
+        `SELECT id, email, display_name, department, purpose, status, created_at, reviewed_at, review_note, version
+         FROM users WHERE status = $1 ORDER BY created_at, id`,
+        [q.status],
+      );
+      res.json({ data: rows, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.get('/registrations/count', manageUsers, async (_req, res, next) => {
+    try {
+      const { rows } = await pool.query(`SELECT count(*) AS n FROM users WHERE status = 'pending'`);
+      res.json({ data: { pending: Number(rows[0]?.['n'] ?? 0) }, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  const STALE_REGISTRATION = 'Pendaftaran sudah diproses atau berubah. Muat ulang lalu coba lagi.';
+
+  r.post('/registrations/:id/approve', manageUsers, async (req, res, next) => {
+    try {
+      const id = parseInput(z.coerce.number().int().positive(), req.params['id']);
+      const b = parseInput(
+        z.object({ role: z.string().min(1), locations: z.array(tempat).max(3).default([]), version: z.number().int().positive() }),
+        req.body,
+      );
+      const email = await withTransaction(pool, async (tx) => {
+        const role = (await tx.query(`SELECT id FROM roles WHERE code = $1`, [b.role])).rows[0];
+        if (!role) throw badRequest('Role tidak dikenal');
+        const upd = await tx.query(
+          `UPDATE users SET status = 'approved', active = true, role_id = $2, reviewed_by = $3, reviewed_at = now(), review_note = NULL,
+             version = version + 1, updated_at = now()
+           WHERE id = $1 AND status = 'pending' AND version = $4 RETURNING email`,
+          [id, role['id'], principalOf(req).id, b.version],
+        );
+        if (!upd.rows[0]) throw conflict(STALE_REGISTRATION);
+        await tx.query(`DELETE FROM user_site_scope WHERE user_id = $1`, [id]);
+        for (const l of new Set(b.locations)) await tx.query(`INSERT INTO user_site_scope (user_id, location) VALUES ($1, $2)`, [id, l]);
+        await recordAudit(tx, req, {
+          action: 'user.registration.approve',
+          target: String(upd.rows[0]['email']),
+          detail: { id, role: b.role, locations: b.locations },
+        });
+        return String(upd.rows[0]['email']);
+      });
+      res.json({ data: { id, email }, status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post('/registrations/:id/reject', manageUsers, async (req, res, next) => {
+    try {
+      const id = parseInput(z.coerce.number().int().positive(), req.params['id']);
+      const b = parseInput(z.object({ note: z.string().trim().max(300).optional(), version: z.number().int().positive() }), req.body);
+      await withTransaction(pool, async (tx) => {
+        const upd = await tx.query(
+          `UPDATE users SET status = 'rejected', active = false, reviewed_by = $2, reviewed_at = now(), review_note = $3,
+             version = version + 1, updated_at = now()
+           WHERE id = $1 AND status = 'pending' AND version = $4 RETURNING email`,
+          [id, principalOf(req).id, b.note || null, b.version],
+        );
+        if (!upd.rows[0]) throw conflict(STALE_REGISTRATION);
+        await recordAudit(tx, req, { action: 'user.registration.reject', target: String(upd.rows[0]['email']), detail: { id } });
+      });
+      res.status(204).end();
+    } catch (e) {
+      next(e);
     }
   });
 

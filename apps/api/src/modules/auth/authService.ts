@@ -33,7 +33,7 @@ function toPermissions(values: readonly unknown[]): Set<Permission> {
 export async function loadUserPrincipal(db: Queryable, userId: number): Promise<Principal | null> {
   const { rows } = await db.query(
     `SELECT u.id, u.display_name, r.id AS role_id, r.code AS role_code FROM users u JOIN roles r ON r.id = u.role_id
-     WHERE u.id = $1 AND u.active = true`,
+     WHERE u.id = $1 AND u.active = true AND u.status = 'approved'`,
     [userId],
   );
   const u = rows[0];
@@ -63,13 +63,24 @@ export class AuthService {
     password: string,
     req: { requestId: string },
   ): Promise<{ token: string; expiresAt: Date; principal: Principal }> {
-    const { rows } = await this.pool.query(`SELECT id, password_hash, failed_attempts, locked_until, active FROM users WHERE email = $1`, [
-      email,
-    ]);
+    const { rows } = await this.pool.query(
+      `SELECT id, password_hash, failed_attempts, locked_until, active, status FROM users WHERE email = $1`,
+      [email],
+    );
     const user = rows[0];
-    if (!user || user['active'] !== true) {
+    if (!user) {
       await argon2.verify(await getDummyHash(), password).catch(() => false);
       await recordAudit(this.pool, { requestId: req.requestId }, { action: 'auth.login_failed', target: email });
+      throw unauthorized('Email atau password salah');
+    }
+    if (user['active'] !== true || user['status'] !== 'approved') {
+      // Status pendaftaran hanya dibuka bila password benar, supaya email orang lain tidak bisa dicek statusnya.
+      const ok = await argon2.verify(String(user['password_hash']), password).catch(() => false);
+      await recordAudit(this.pool, { requestId: req.requestId }, { action: 'auth.login_failed', target: email });
+      if (ok && user['status'] === 'pending')
+        throw new AppError(403, 'ACCOUNT_PENDING', 'Pendaftaran Anda masih menunggu persetujuan admin.');
+      if (ok && user['status'] === 'rejected')
+        throw new AppError(403, 'ACCOUNT_REJECTED', 'Pendaftaran Anda ditolak. Hubungi admin untuk informasi lebih lanjut.');
       throw unauthorized('Email atau password salah');
     }
     const userId = Number(user['id']);

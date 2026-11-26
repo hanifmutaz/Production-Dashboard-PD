@@ -58,6 +58,7 @@ const MIGRATIONS = [
   '1732500000000_planning_lines.sql',
   '1732600000000_user_email.sql',
   '1732700000000_tv_screen.sql',
+  '1732800000000_user_registration.sql',
 ];
 
 export function migrationStatements(): string[] {
