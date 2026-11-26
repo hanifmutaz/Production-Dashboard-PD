@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Shell } from './shell/Shell';
 import { useAuth } from './lib/auth';
 import { useConfig } from './lib/kpi';
@@ -18,6 +19,37 @@ function routeKey(r: Route): string {
   return 'site' in r ? `${r.page}-${r.site}` : r.page === 'line' ? `line-${r.line.toLowerCase()}` : r.page;
 }
 
+const WIB_TIME = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+const WIB_DATE = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+/** Header layar TV Departemen: judul besar terbaca dari jauh + jam WIB + status perangkat. */
+function TvHeader({ title, device }: { readonly title: string; readonly device: string }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <header className="tv-head">
+      <div className="tv-head-title">
+        <span className="tv-eyebrow">Hirose Internal · TV Departemen</span>
+        <h1>{title}</h1>
+      </div>
+      <div className="tv-head-meta">
+        <time className="tv-clock" dateTime={now.toISOString()}>
+          {WIB_TIME.format(now).replace(/\./g, ':')}
+          <small>WIB</small>
+        </time>
+        <span className="tv-date">{WIB_DATE.format(now)}</span>
+        <span className="tv-device" title="Perangkat ini terhubung">
+          <i aria-hidden="true" />
+          {device}
+        </span>
+      </div>
+    </header>
+  );
+}
+
 export function App() {
   const { me, loading, allowed, can } = useAuth();
   const { raw } = useConfig();
@@ -33,7 +65,7 @@ export function App() {
   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) {
     return (
       <main id="view" className="department-tv" key={`${me.screen}-${me.today}`}>
-        <h1>{me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'}</h1>
+        <TvHeader title={me.screen === 'hub' ? 'Master Dashboard Utama' : 'Executive Dashboard'} device={me.name} />
         {me.screen === 'hub' ? <Hub /> : <Executive />}
       </main>
     );
