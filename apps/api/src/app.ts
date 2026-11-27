@@ -9,7 +9,7 @@ import { pinoHttp } from 'pino-http';
 import type { ShiftConfig } from '@v3/shared';
 import type { ConmasReader } from './db/conmas.js';
 import type { DbPool } from './db/pool.js';
-import { authenticate, requireAuth } from './http/auth.js';
+import { authenticate, requireAuth, canSeeLocation, requirePermission } from './http/auth.js';
 import { errorHandler, notFoundHandler } from './http/errors.js';
 import type { ReportColumns } from './columns/reportColumns.js';
 import { accessRoutes } from './modules/access/routes.js';
@@ -27,6 +27,7 @@ import { reportingRoutes } from './modules/reporting/routes.js';
 import { planningRoutes } from './modules/planning/routes.js';
 import { settingsRoutes } from './modules/settings/routes.js';
 import { SettingsService } from './modules/settings/settingsService.js';
+import { SnapshotRepository } from './modules/sync/day.js';
 import { syncRoutes } from './modules/sync/routes.js';
 
 export interface AppDeps {
@@ -86,7 +87,37 @@ export function createApp(deps: AppDeps): Express {
     staleThresholdMin: deps.shift.lineNotRunningThresholdMin,
     shift: { ...deps.shift },
   });
-  const reporting = new ReportingService(conmasRepo, linesRepo, deps.shift, settingsService, deps.clock);
+  const statusOfSite = async (site: string, start?: string, end?: string): Promise<'ok' | 'on_hold' | 'unavailable'> => {
+    if (site === 'internal') return 'ok';
+    if (!deps.subcontEnabled || !deps.syncKeys[site as 'sgp' | 'systech']) return 'on_hold';
+    const now = (deps.clock ?? Date.now)();
+    const today = new Date(now + 7 * 3600000).toISOString().slice(0, 10);
+    if (start && end) {
+      const last = end < today ? end : today;
+      if (start > last) return 'unavailable';
+      const expected = 1 + (Date.parse(last) - Date.parse(start)) / 86400000;
+      const coverage = await deps.dashboard.query(
+        'SELECT COUNT(*) AS days FROM push_snapshots WHERE source=$1 AND type BETWEEN $2 AND $3',
+        [site, 'production-day-' + start, 'production-day-' + last],
+      );
+      if (Number(coverage.rows[0]?.['days']) !== expected) return 'unavailable';
+      if (last < today) return 'ok';
+    }
+    const { rows } = await deps.dashboard.query('SELECT received_at FROM push_snapshots WHERE source=$1 AND type=$2', [
+      site,
+      'production-day-' + today,
+    ]);
+    return rows[0] && now - new Date(String(rows[0]['received_at'])).getTime() <= deps.syncStaleAfterSec * 1000 ? 'ok' : 'unavailable';
+  };
+  const resolveSite = async (site: string) =>
+    new ReportingService(
+      site === 'internal' ? conmasRepo : new SnapshotRepository(deps.dashboard, site),
+      linesRepo,
+      { ...deps.shift, ...(await settingsService.siteShift(site)) },
+      settingsService,
+      deps.clock,
+    );
+  const reporting = new ReportingService(conmasRepo, linesRepo, deps.shift, settingsService, deps.clock, resolveSite, statusOfSite);
   const executive = new ExecutiveService(deps.dashboard, reporting, {
     subcontEnabled: deps.subcontEnabled,
     cacheSec: deps.executiveCacheSec,
@@ -122,7 +153,15 @@ export function createApp(deps: AppDeps): Express {
     authRoutes(authService, deps.dashboard, { cookieSecure: deps.cookieSecure, ...(deps.clock ? { clock: deps.clock } : {}) }),
   );
   app.use('/api/v3', requireAuth);
-  app.use('/api/v3/reporting', reportingRoutes(reporting, { subcontEnabled: deps.subcontEnabled }));
+  app.get('/api/v3/sites', requirePermission('dashboard.view', 'config.view'), async (req, res, next) => {
+    try {
+      const sites = ['internal', 'sgp', 'systech'].filter((s) => canSeeLocation(req.principal?.locations ?? [], s));
+      res.json({ data: Object.fromEntries(await Promise.all(sites.map(async (s) => [s, await statusOfSite(s)]))), status: 'ok' });
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.use('/api/v3/reporting', reportingRoutes(reporting));
   app.use('/api/v3/executive', executiveRoutes(executive, deps.dashboard));
   app.use('/api/v3/lines', linesRoutes(linesRepo, conmasRepo, deps.dashboard, settingsService));
   app.use('/api/v3/planning', planningRoutes(deps.dashboard));

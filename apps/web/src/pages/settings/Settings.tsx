@@ -246,60 +246,130 @@ function LineStatusCard() {
   );
 }
 
-function ShiftsPanel() {
-  const eff = useApi<{ shift: Record<string, number> }>('/api/v3/settings/effective');
-  const s = eff.data?.shift ?? {};
-  const h = (n: number | undefined): string => `${String(n ?? 0).padStart(2, '0')}:00`;
-  const rows = [
-    {
-      id: '2-1',
-      title: 'Shift 1 (2 Shift)',
-      detail: [`${h(s['shift2StartHour'])}–${h(s['shift2EndHourWeekday'])}`, `Jumat s/d ${h(s['shift2EndHourFriday'])}`],
-    },
-    { id: '2-2', title: 'Shift 2 (2 Shift)', detail: [`${h(s['shift2NightStartHour'])}–${h(s['shift2StartHour'])} (lewat tengah malam)`] },
-    { id: '3-1', title: 'Shift 1 (3 Shift)', detail: [`${h(s['shift3StartHour'])}–${h(s['shift3SecondStartHour'])}`] },
-    { id: '3-2', title: 'Shift 2 (3 Shift)', detail: [`${h(s['shift3SecondStartHour'])}–${h(s['shift3ThirdStartHour'])}`] },
-    { id: '3-3', title: 'Shift 3 (3 Shift)', detail: [`${h(s['shift3ThirdStartHour'])}–${h(s['shift3StartHour'])} (lewat tengah malam)`] },
-  ].map((r) => ({ ...r, active: true }));
+function LocationSelect({ site, set }: { site: string; set: (s: string) => void }) {
+  const { me } = useAuth();
   return (
-    <>
-      <p className="settings-help settings-context">
-        Jam shift dibaca server dari .env (SHIFT2_*, SHIFT3_*) agar logika shift konsisten di semua perangkat. Ubah lewat .env lalu restart
-        server.
-      </p>
-      <ListTable label="Shift" rows={rows} />
-      <p className="settings-help">
-        Masa tunggu awal shift & batas Not Running: {s['lineStartGraceMin'] ?? '—'} / {s['lineNotRunningThresholdMin'] ?? '—'} menit.
-      </p>
-    </>
+    <label>
+      Lokasi{' '}
+      <select value={site} onChange={(e) => set(e.target.value)}>
+        {SITES.filter((s) => !me?.locations.length || me.locations.includes(s)).map((s) => (
+          <option key={s} value={s}>
+            {siteName(s)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
-
+const shiftFields: Record<string, string> = {
+  shift2StartHour: '2 shift · mulai pagi',
+  shift2EndHourWeekday: 'Selesai pagi',
+  shift2EndHourFriday: 'Selesai pagi hari Jumat',
+  shift2NightStartHour: 'Mulai malam',
+  shift3StartHour: '3 shift · mulai shift 1',
+  shift3SecondStartHour: 'Mulai shift 2',
+  shift3ThirdStartHour: 'Mulai shift 3',
+  hourlySlotOffset: 'Offset slot jam i-Reporter',
+};
+function ShiftsPanel() {
+  const { me } = useAuth();
+  const [site, set] = useState(me?.locations[0] ?? 'internal');
+  const { raw } = useConfig();
+  const eff = useApi<{ shift: Record<string, number> }>('/api/v3/settings/effective');
+  const saved = raw.get('shift.' + site);
+  return (
+    <section className="settings-card">
+      <LocationSelect site={site} set={set} />
+      {eff.data && (
+        <ShiftEditor
+          key={site + '-' + (saved?.version ?? 0)}
+          site={site}
+          initial={{
+            ...eff.data.shift,
+            ...(site === 'internal'
+              ? {}
+              : { shift2StartHour: 8, shift2EndHourWeekday: 20, shift2EndHourFriday: 20, shift2NightStartHour: 20, hourlySlotOffset: 2 }),
+            ...(saved?.value as Record<string, number> | undefined),
+          }}
+        />
+      )}
+    </section>
+  );
+}
+function ShiftEditor({ site, initial }: { site: string; initial: Record<string, number> }) {
+  const save = useSaveSetting();
+  const canEdit = useAuth().can('config.edit');
+  const [values, set] = useState(Object.fromEntries(Object.keys(shiftFields).map((k) => [k, initial[k] ?? 0])));
+  const [msg, message] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="settings-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        try {
+          await save('shift.' + site, values);
+          message('Jam shift tersimpan.');
+        } catch (err) {
+          message(err instanceof Error ? err.message : 'Gagal menyimpan');
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <fieldset disabled={!canEdit || busy}>
+        <legend>Jam shift · {siteName(site)}</legend>
+        {Object.entries(shiftFields).map(([k, label]) => (
+          <label className="settings-field" key={k}>
+            {label}
+            <input
+              required
+              type="number"
+              min={k === 'hourlySlotOffset' ? -12 : 0}
+              max={k === 'hourlySlotOffset' ? 12 : 23}
+              value={values[k]}
+              onChange={(e) => set({ ...values, [k]: Number(e.target.value) })}
+            />
+          </label>
+        ))}
+      </fieldset>
+      {canEdit && (
+        <button className="btn pri" disabled={busy}>
+          Simpan jam shift
+        </button>
+      )}
+      <p role="status">{msg}</p>
+    </form>
+  );
+}
 function ExceptionsPanel() {
   const { me } = useAuth();
+  const [site, setSite] = useState(me?.locations[0] ?? 'internal');
   const today = me?.today ?? '';
   const [period, setPeriod] = useState(today.slice(0, 7));
   const [open, setOpen] = useState(false);
   const y = Number(period.slice(0, 4));
   const m = Number(period.slice(5));
-  const cal = useApi<{ holidays: string[]; version: number | null }>(`/api/v3/executive/calendar?tempat=internal&year=${y}&month=${m}`);
+  const cal = useApi<{ holidays: string[]; version: number | null }>(`/api/v3/executive/calendar?tempat=${site}&year=${y}&month=${m}`);
   const rows = (cal.data?.holidays ?? []).map((d) => {
     const dow = new Date(`${d}T00:00:00Z`).getUTCDay();
     return {
       id: d,
       active: true,
       title: d,
-      detail: [siteName('internal'), 'Libur', dow === 0 || dow === 6 ? 'Akhir pekan' : 'Tanggal khusus'],
+      detail: [siteName(site), 'Libur', dow === 0 || dow === 6 ? 'Akhir pekan' : 'Tanggal khusus'],
     };
   });
   return (
     <>
       <ListTable
-        label="Kalender Kerja"
+        label={'Kalender Kerja · ' + siteName(site)}
         rows={rows}
         headerExtra={
           <div className="settings-tabs">
             <label className="settings-search" style={{ margin: 0 }}>
+              <LocationSelect site={site} set={setSite} />
               <input
                 type="month"
                 value={period}
@@ -317,7 +387,7 @@ function ExceptionsPanel() {
       />
       {open ? (
         <WorkCalendar
-          site="internal"
+          site={site}
           year={y}
           month={m}
           onClose={(saved) => {

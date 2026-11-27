@@ -363,7 +363,9 @@ export function Executive() {
                             <i aria-hidden="true" style={{ ['--exec-site' as string]: row.color }}></i>
                             {row.name}
                           </a>
-                          <small className="exec-workdays">{onHold ? 'On Hold' : `${row.days} hari kerja/bulan`}</small>
+                          <small className="exec-workdays">
+                            {onHold ? (row.status === 'unavailable' ? 'Menunggu sinkronisasi' : 'On Hold') : `${row.days} hari kerja/bulan`}
+                          </small>
                         </div>
                         {canEdit && !onHold ? (
                           <button

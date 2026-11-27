@@ -232,9 +232,11 @@ function MonthTargets({
 }) {
   const canEdit = useAuth().can('config.edit');
   const [year, month] = period.split('-').map(Number);
+  const { sites } = useConfig();
+  const [site, setSite] = useState(useAuth().me?.locations[0] ?? 'internal');
   const query = `year=${year}&month=${month}`;
   const plan = useApi<Plan>(`/api/v3/planning?${query}`);
-  const calendar = useApi<{ holidays: string[] }>(`/api/v3/executive/calendar?tempat=internal&${query}`);
+  const calendar = useApi<{ holidays: string[] }>(`/api/v3/executive/calendar?tempat=${site}&${query}`);
   const [drafts, setDrafts] = useState<Record<string, TargetDraft>>({});
   const [search, setSearch] = useState('');
   const [missing, setMissing] = useState(false);
@@ -334,7 +336,7 @@ function MonthTargets({
         onChange={(e) => edit(id, { [field]: e.target.value })}
       />
     );
-  const lines = new Map((master.data ?? []).filter((l) => l.location === 'internal').map((l) => [l.line_code, l.series]));
+  const lines = new Map((master.data ?? []).filter((l) => l.location === site).map((l) => [l.line_code, l.series]));
   // Keep previously planned lines accessible if the master record was removed.
   const known = new Set((master.data ?? []).map((l) => l.line_code));
   for (const l of plan.data?.lines ?? []) if (!known.has(l.line_code)) lines.set(l.line_code, '');
@@ -374,7 +376,7 @@ function MonthTargets({
                 <tr key={site}>
                   <th scope="row">{siteName(site)}</th>
                   <td>
-                    {site === 'internal' || saved.has('loc:' + site) ? input('loc:' + site, `Target ${siteName(site)}`, 'qty') : 'On Hold'}
+                    {sites[site] === 'ok' || saved.has('loc:' + site) ? input('loc:' + site, `Target ${siteName(site)}`, 'qty') : 'On Hold'}
                   </td>
                   {canEdit && <td>{undo('loc:' + site)}</td>}
                 </tr>
@@ -385,7 +387,19 @@ function MonthTargets({
       </section>
       <section className="settings-card settings-list">
         <header>
-          <h3>Target per line · Hirose Internal</h3>
+          <h3>Target per line</h3>
+          <select
+            aria-label="Lokasi target line"
+            value={site}
+            disabled={busy || pending.length > 0}
+            onChange={(e) => setSite(e.target.value)}
+          >
+            {SITES.filter((s) => sites[s]).map((s) => (
+              <option key={s} value={s}>
+                {siteName(s)}
+              </option>
+            ))}
+          </select>
           {canEdit && (
             <button type="button" className="btn" disabled={!ready || busy || !pending.length} onClick={() => void save()}>
               {busy ? 'Menyimpan…' : `Simpan perubahan${pending.length ? ` (${pending.length})` : ''}`}

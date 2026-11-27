@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requirePermission } from '../../http/auth.js';
-import { parseInput } from '../../http/errors.js';
+import { canSeeLocation, requirePermission } from '../../http/auth.js';
+import { forbidden, parseInput } from '../../http/errors.js';
 import { versionField } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
@@ -56,6 +56,7 @@ export function settingsRoutes(pool: DbPool, svc: SettingsService): Router {
     try {
       const key = parseInput(settingKey, req.params['key']);
       const b = parseInput(z.object({ value: z.record(z.string(), z.unknown()), version: versionField }), req.body);
+      if (key.startsWith('shift.') && !canSeeLocation(req.principal?.locations ?? [], key.slice(6))) throw forbidden();
       const strict = STRICT_SETTINGS[key];
       const value = strict ? parseInput(strict, b.value) : b.value;
       const json = JSON.stringify(value);

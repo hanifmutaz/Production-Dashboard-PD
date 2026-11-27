@@ -225,10 +225,17 @@ function LineTable({
 }
 
 export function useSiteCounts(today: string): Record<string, SiteCount | null> {
-  const s = useApi<Summary>(`/api/v3/reporting/summary/range?start=${today}&end=${today}&location=internal`);
-  const lines = useApi<readonly unknown[]>('/api/v3/lines');
-  const total = lines.data?.length ?? 0;
-  return { internal: { active: s.data?.lines_running ?? 0, total }, sgp: null, systech: null };
+  const { sites } = useConfig();
+  const path = '/api/v3/reporting/summary/current?location=';
+  const internal = useApi<Summary>(sites.internal === 'ok' ? path + 'internal' : null, today);
+  const sgp = useApi<Summary>(sites.sgp === 'ok' ? path + 'sgp' : null, today);
+  const systech = useApi<Summary>(sites.systech === 'ok' ? path + 'systech' : null, today);
+  return Object.fromEntries(
+    Object.entries({ internal, sgp, systech }).map(([k, res]) => [
+      k,
+      sites[k] === 'ok' && res.data ? { active: res.data.lines_running, total: res.data.lines_total } : null,
+    ]),
+  );
 }
 
 export function Master({ site }: { readonly site: string }) {
@@ -239,22 +246,25 @@ export function Master({ site }: { readonly site: string }) {
   const [month, setMonth] = useState(today.slice(0, 7));
   const [day, setDay] = useState(today);
   const counts = useSiteCounts(today);
-  const internal = site === 'internal';
+  const { sites } = useConfig();
+  const siteActive = site === 'internal' || sites[site] === 'ok';
   const monthEnd = lastOfMonth(month);
   const limit = monthEnd < today ? monthEnd : today;
-  const monthSum = useApi<Summary>(internal ? `/api/v3/reporting/summary/range?start=${month}-01&end=${limit}&location=internal` : null);
-  const daySum = useApi<Summary>(internal ? `/api/v3/reporting/summary/range?start=${day}&end=${day}&location=internal` : null);
+  const monthSum = useApi<Summary>(siteActive ? `/api/v3/reporting/summary/range?start=${month}-01&end=${limit}&location=${site}` : null);
+  const daySum = useApi<Summary>(siteActive ? `/api/v3/reporting/summary/range?start=${day}&end=${day}&location=${site}` : null);
   const trend = useApi<{ days: TrendDay[] }>(
-    internal ? `/api/v3/reporting/trend/range?start=${month}-01&end=${monthEnd}&location=internal` : null,
+    siteActive ? `/api/v3/reporting/trend/range?start=${month}-01&end=${monthEnd}&location=${site}` : null,
   );
-  const metrics = useApi<LineMetrics>(internal ? `/api/v3/reporting/line-metrics?start=${day}&end=${day}&location=internal` : null);
-  const current = useApi<Current>(internal && day === today ? '/api/v3/reporting/summary/current?location=internal' : null);
+  const metrics = useApi<LineMetrics>(siteActive ? `/api/v3/reporting/line-metrics?start=${day}&end=${day}&location=${site}` : null);
+  const current = useApi<Current>(siteActive && day === today ? `/api/v3/reporting/summary/current?location=${site}` : null);
 
-  if (!internal) {
+  if (!siteActive) {
     return (
       <div className="page">
         <LocTabs current={site} prefix="master-" counts={counts} />
-        <Soon>Lokasi ini On Hold — data subcont belum tersambung (push-sync aktif di Fase Subcont).</Soon>
+        <Soon>
+          {sites[site] === 'on_hold' ? 'On Hold' : sites[site] === 'unavailable' ? 'Menunggu sinkronisasi terbaru' : 'Memuat lokasi…'}
+        </Soon>
       </div>
     );
   }

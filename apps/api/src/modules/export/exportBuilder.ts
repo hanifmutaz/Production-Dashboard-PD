@@ -38,15 +38,14 @@ const shiftName = (label: string | null): string => {
   return p ? `Shift ${p.shiftNum}` : (label ?? '—');
 };
 
-export async function buildExportRows(f: ExportFilters, reporting: ReportingService, executive: ExecutiveService): Promise<ExportRow[]> {
+export async function buildExportRows(f: ExportFilters, root: ReportingService, executive: ExecutiveService): Promise<ExportRow[]> {
   const match = lineMatcher(f.lines);
-  // Hanya Hirose Internal yang punya sumber data (SGP/Systech On Hold).
-  const sites = f.locations.filter((s) => s === 'internal');
+  const sites = f.locations;
   const out: ExportRow[] = [];
 
   if (f.ds === 'exec') {
     const [y, m] = (f.period ?? f.start.slice(0, 7)).split('-').map(Number);
-    const data = await executive.month(y ?? 0, m ?? 0);
+    const data = await executive.month(y ?? 0, m ?? 0, f.locations);
     for (const l of data.locations) {
       if (!f.locations.includes(l.tempat) || l.status !== 'ok') continue;
       const running = l.achievement?.targetHariIni ?? null;
@@ -71,6 +70,8 @@ export async function buildExportRows(f: ExportFilters, reporting: ReportingServ
   }
 
   for (const site of sites) {
+    if ((await root.statusOfSite(site, f.start, f.end)) !== 'ok') continue;
+    const reporting = await root.forSite(site);
     const lok = SITE_NAME[site] ?? site;
     if (f.ds === 'loc_day' || f.ds === 'line_day') {
       const { lines, rows } = await reporting.lineMetrics(f.start, f.end, { location: site, perDay: f.agg === 'day' });

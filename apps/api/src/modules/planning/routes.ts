@@ -1,8 +1,8 @@
 // Target Produksi (Settings → Target Produksi): target lokasi (tabel targets) + target per line (line_targets).
 import { Router } from 'express';
 import { z } from 'zod';
-import { requirePermission } from '../../http/auth.js';
-import { parseInput } from '../../http/errors.js';
+import { canSeeLocation, requirePermission } from '../../http/auth.js';
+import { forbidden, notFound, parseInput } from '../../http/errors.js';
 import { lineCode, month, versionField, year } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
@@ -20,10 +20,17 @@ export function planningRoutes(pool: DbPool): Router {
         [q.year, q.month],
       );
       const lines = await pool.query(
-        `SELECT line_code, year, month, target, work_days, note, version FROM line_targets WHERE year = $1 AND month = $2 ORDER BY line_code`,
+        `SELECT t.line_code,t.year,t.month,t.target,t.work_days,t.note,t.version,l.location FROM line_targets t JOIN lines l ON l.line_code=t.line_code WHERE t.year=$1 AND t.month=$2 ORDER BY t.line_code`,
         [q.year, q.month],
       );
-      res.json({ data: { locations: locations.rows.map(serializeTargetRow), lines: lines.rows.map(serializeTargetRow) }, status: 'ok' });
+      const visible = (row: Record<string, unknown>) => canSeeLocation(req.principal?.locations ?? [], String(row['location']));
+      res.json({
+        data: {
+          locations: locations.rows.filter(visible).map(serializeTargetRow),
+          lines: lines.rows.filter(visible).map(serializeTargetRow),
+        },
+        status: 'ok',
+      });
     } catch (e) {
       next(e);
     }
@@ -45,6 +52,9 @@ export function planningRoutes(pool: DbPool): Router {
       );
       const userId = req.principal?.id ?? null;
       const row = await withTransaction(pool, async (tx) => {
+        const line = await tx.query('SELECT location FROM lines WHERE line_code=$1 FOR SHARE', [b.line_code]);
+        if (!line.rows.length) throw notFound('Line tidak terdaftar');
+        if (!canSeeLocation(req.principal?.locations ?? [], String(line.rows[0]?.['location']))) throw forbidden();
         const saved = await saveVersioned(tx, {
           version: b.version,
           insertSql: `INSERT INTO line_targets (line_code, year, month, target, work_days, note, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7)

@@ -8,3 +8,7 @@ config/reportColumns.js
 *.log
 playwright-report/
 test-results/
+
+.env.subcont
+.subcont-*.cursor*
+!.env.subcont.example

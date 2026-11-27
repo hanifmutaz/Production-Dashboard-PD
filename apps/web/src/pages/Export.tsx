@@ -11,6 +11,7 @@ import {
 import { PageLead } from '../components/common';
 import { RangePicker, rangeLabel } from '../components/Picker';
 import { api, ApiError, downloadFile } from '../lib/api';
+import { useConfig } from '../lib/kpi';
 import { useAuth } from '../lib/auth';
 import { presetRange, type Range } from '../lib/dates';
 import { fmt, MON } from '../lib/format';
@@ -35,6 +36,7 @@ const colsOf = (ds: ExportDatasetKey): Cols => EXPORT_DATASETS[ds].cols as unkno
 const monthLabel = (p: string): string => `${MON[Number(p.slice(5)) - 1] ?? ''} ${p.slice(0, 4)}`;
 
 export function Export() {
+  const { sites: status } = useConfig();
   const { me } = useAuth();
   const today = me?.today ?? '';
   const [ds, setDs] = useState<ExportDatasetKey>('line_day');
@@ -58,7 +60,7 @@ export function Export() {
   const saved = useApi<SavedTemplate[]>('/api/v3/export/templates');
 
   const D = EXPORT_DATASETS[ds];
-  const sites = SITES.filter((k) => locs[k]);
+  const sites = SITES.filter((k) => locs[k] && status[k] === 'ok');
   const isExec = ds === 'exec';
   const hasLine = !['exec', 'loc_day'].includes(ds);
   const hasShift = ['line_hour', 'line_shift', 'line_product', 'stop', 'rej'].includes(ds);
@@ -259,7 +261,7 @@ export function Export() {
                     onClick={() => setLocs({ ...locs, [k]: !locs[k] })}
                   >
                     {siteName(k)}
-                    {k !== 'internal' ? ' · On Hold' : ''}
+                    {status[k] === 'on_hold' ? ' · On Hold' : status[k] === 'unavailable' ? ' · Menunggu sinkronisasi' : ''}
                   </button>
                 ))}
               </div>

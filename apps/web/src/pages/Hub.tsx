@@ -20,6 +20,7 @@ interface Trend {
 interface Row {
   readonly site: string;
   readonly ok: boolean;
+  readonly status: string;
   readonly s: Summary | null;
 }
 
@@ -37,7 +38,7 @@ function HubKpis({ rows }: { readonly rows: readonly Row[] }) {
   const has = matched.length > 0;
   return (
     <div className="kpis hub-kpis">
-      <Kp2 l="Output plan" v={fmt(plan)} d="pcs" tone="" />
+      <Kp2 l="Output plan" v={has ? fmt(plan) : '—'} d="pcs" tone="" />
       <Kp2 l="Output actual" v={has ? fmt(actual) : '—'} d="pcs" tone="" />
       <Kp2 l="Bekidoritsu" v={<AchievementValue value={pct} />} d={achievementLabel(pct)} tone={band(pct)} />
       <Kp2 l="Sogo" v={has ? fmt(sum((s) => s.sogo)) : '—'} d="menit" tone="" />
@@ -77,7 +78,7 @@ function HubTable({ rows, day }: { readonly rows: readonly Row[]; readonly day: 
         </tr>
       </thead>
       <tbody>
-        {rows.map(({ site, ok, s }) => {
+        {rows.map(({ site, ok, s, status }) => {
           const cells: ReactNode[] = [
             <>
               <span className="dot" style={{ background: SITE_INFO[site as 'internal'].color }}></span>
@@ -85,7 +86,7 @@ function HubTable({ rows, day }: { readonly rows: readonly Row[]; readonly day: 
                 {siteName(site)}
               </a>
             </>,
-            ok ? <Chp t="Terhubung" tone="ok" /> : 'On Hold',
+            ok ? <Chp t="Terhubung" tone="ok" /> : status === 'on_hold' ? 'On Hold' : 'Menunggu sinkronisasi',
           ];
           if (day) cells.push(s ? `${s.lines_running}/${s.lines_total}` : '—');
           cells.push(
@@ -120,7 +121,7 @@ function LocationCharts({
 }: {
   readonly rows: readonly Row[];
   readonly days: readonly string[];
-  readonly trend: Trend | null;
+  readonly trend: Record<string, Trend | null>;
   readonly label: string;
 }) {
   const band = useBand();
@@ -131,12 +132,12 @@ function LocationCharts({
       <i style={{ width: `${width(v, max)}%` }}></i>
     </span>
   );
-  const byDate = new Map((trend?.days ?? []).map((d) => [d.date, d]));
+
   const series = SITES.map((site) => ({
     site,
     name: siteName(site),
     values: days.map((d) => {
-      const x = site === 'internal' ? byDate.get(d) : undefined;
+      const x = trend[site]?.days.find((p) => p.date === d);
       return x?.hasData ? x.actual : null;
     }),
   }));
@@ -261,9 +262,22 @@ export function Hub() {
   const end = period === 'daily' ? day : rng.t;
   const trendFrom = period === 'daily' ? (addD(day, -6) < MIN_D ? MIN_D : addD(day, -6)) : rng.f;
   const refreshKey = me?.kind === 'device' ? me.now : undefined;
-  const summary = useApi<Summary>(`/api/v3/reporting/summary/range?start=${start}&end=${end}&location=internal`, refreshKey);
-  const trend = useApi<Trend>(`/api/v3/reporting/trend/range?start=${trendFrom}&end=${end}&location=internal`, refreshKey);
-  const rows: Row[] = SITES.map((site) => ({ site, ok: site === 'internal', s: site === 'internal' ? summary.data : null }));
+  const { sites } = useConfig();
+  const sums = `/api/v3/reporting/summary/range?start=${start}&end=${end}&location=`;
+  const trends = `/api/v3/reporting/trend/range?start=${trendFrom}&end=${end}&location=`;
+  const summary = useApi<Summary>(sites.internal === 'ok' ? sums + 'internal' : null, refreshKey);
+  const sgp = useApi<Summary>(sites.sgp === 'ok' ? sums + 'sgp' : null, refreshKey);
+  const systech = useApi<Summary>(sites.systech === 'ok' ? sums + 'systech' : null, refreshKey);
+  const internalTrend = useApi<Trend>(sites.internal === 'ok' ? trends + 'internal' : null, refreshKey);
+  const sgpTrend = useApi<Trend>(sites.sgp === 'ok' ? trends + 'sgp' : null, refreshKey);
+  const systechTrend = useApi<Trend>(sites.systech === 'ok' ? trends + 'systech' : null, refreshKey);
+  const trend = { internal: internalTrend.data, sgp: sgpTrend.data, systech: systechTrend.data };
+  const rows = SITES.filter((site) => sites[site]).map((site) => ({
+    site,
+    status: sites[site] ?? 'unavailable',
+    ok: sites[site] === 'ok',
+    s: sites[site] === 'ok' ? { internal: summary, sgp, systech }[site].data : null,
+  }));
   const label = period === 'daily' ? fd(day) : rangeLabel(rng);
   const tabs: [typeof period, string][] = [
     ['daily', 'Harian'],
@@ -271,7 +285,7 @@ export function Hub() {
   ];
   return (
     <div className="page">
-      <PageLead note="Data i-Reporter · Subcont On Hold" />
+      <PageLead note="Data i-Reporter" />
       <div className="hub-periods">
         <div className="hub-tabs" role="tablist" aria-label="Periode Master Dashboard">
           {tabs.map(([k, l]) => (
@@ -325,7 +339,7 @@ export function Hub() {
                 </p>
               ) : null}
               <HubKpis rows={rows} />
-              <LocationCharts rows={rows} days={dayList(trendFrom, end)} trend={trend.data} label={label} />
+              <LocationCharts rows={rows} days={dayList(trendFrom, end)} trend={trend} label={label} />
               <div className="card np">
                 <div style={{ padding: '16px 18px 6px' }}>
                   <h2>{k === 'daily' ? 'Ringkasan Kinerja Harian per Lokasi' : 'Ringkasan Kinerja Periode per Lokasi'}</h2>

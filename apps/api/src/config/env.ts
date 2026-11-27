@@ -52,8 +52,8 @@ const envSchema = z
     WEB_DIST_DIR: z.string().optional(),
   })
   .superRefine((env, ctx) => {
-    if (env.SUBCONT_ENABLED && (!env.SYNC_KEY_SGP || !env.SYNC_KEY_SYSTECH)) {
-      ctx.addIssue({ code: 'custom', message: 'SUBCONT_ENABLED=true butuh SYNC_KEY_SGP dan SYNC_KEY_SYSTECH' });
+    if (env.SUBCONT_ENABLED && (!env.SYNC_KEY_SGP && !env.SYNC_KEY_SYSTECH)) {
+      ctx.addIssue({ code: 'custom', message: 'SUBCONT_ENABLED=true butuh SYNC_KEY_SGP atau SYNC_KEY_SYSTECH' });
     }
     if (env.NODE_ENV === 'production' && !env.COOKIE_SECURE) {
       ctx.addIssue({ code: 'custom', message: 'Production wajib COOKIE_SECURE=true' });

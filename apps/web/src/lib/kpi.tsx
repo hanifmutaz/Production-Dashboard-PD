@@ -19,6 +19,7 @@ interface SettingRow {
 }
 
 export interface Config {
+  readonly sites: Record<string, string>;
   readonly kpi: KpiRules;
   readonly raw: ReadonlyMap<string, SettingRow>;
   readonly name: string;
@@ -32,6 +33,12 @@ export function ConfigProvider({ children, enabled = true }: { readonly children
   const { can } = useAuth();
   const source = can('config.view') ? '/api/v3/settings' : can('dashboard.view') ? '/api/v3/settings/runtime' : null;
   const res = useApi<SettingRow[]>(enabled ? source : null);
+  const sites = useApi<Record<string, string>>(enabled && source ? '/api/v3/sites' : null);
+  useEffect(() => {
+    if (!enabled || !source) return;
+    const id = setInterval(sites.reload, 60000);
+    return () => clearInterval(id);
+  }, [enabled, source, sites.reload]);
   const raw = new Map((res.data ?? []).map((r) => [r.key, r]));
   const kpiValue = raw.get('config.kpi')?.value as Partial<KpiRules> | undefined;
   const general = raw.get('config.general')?.value as { name?: string; department?: string } | undefined;
@@ -48,6 +55,7 @@ export function ConfigProvider({ children, enabled = true }: { readonly children
     if (!saved && (theme === 'light' || theme === 'dark')) document.documentElement.dataset['theme'] = theme;
   }, [theme]);
   const value: Config = {
+    sites: sites.data ?? {},
     kpi: { ...DEFAULT_KPI, ...(kpiValue ?? {}) },
     raw,
     name: general?.name || 'Dashboard Produksi',

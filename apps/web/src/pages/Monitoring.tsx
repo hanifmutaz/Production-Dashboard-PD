@@ -97,7 +97,7 @@ function useShadow(): [React.RefObject<HTMLDivElement | null>, ShadowRoot | null
 export function Monitoring({ site }: { readonly site: string }) {
   const [hostRef, shadow] = useShadow();
   const { me } = useAuth();
-  const { kpi, raw } = useConfig();
+  const { kpi, raw, sites } = useConfig();
   const today = me?.today ?? '';
   const month = today.slice(0, 7);
   const monthEnd = lastOfMonth(month);
@@ -128,12 +128,23 @@ export function Monitoring({ site }: { readonly site: string }) {
 
   const lines = useApi<LineRow[]>('/api/v3/lines');
   const planning = useApi<Planning>(`/api/v3/planning?year=${month.slice(0, 4)}&month=${Number(month.slice(5))}`);
-  const metrics = useApi<{ rows: LineDayMetrics[] }>(
-    `/api/v3/reporting/line-metrics?start=${month}-01&end=${today}&location=internal&perDay=1`,
-  );
-  const calendar = useApi<{ holidays: string[] }>(
-    `/api/v3/executive/calendar?tempat=internal&year=${month.slice(0, 4)}&month=${Number(month.slice(5))}`,
-  );
+  const metricsPath = `/api/v3/reporting/line-metrics?start=${month}-01&end=${today}&perDay=1&location=`;
+  const calendarPath = `/api/v3/executive/calendar?year=${month.slice(0, 4)}&month=${Number(month.slice(5))}&tempat=`;
+  const minternal = useApi<{ rows: LineDayMetrics[] }>(sites.internal === 'ok' ? metricsPath + 'internal' : null);
+  const cinternal = useApi<{ holidays: string[] }>(sites.internal === 'ok' ? calendarPath + 'internal' : null);
+  const msgp = useApi<{ rows: LineDayMetrics[] }>(sites.sgp === 'ok' ? metricsPath + 'sgp' : null);
+  const csgp = useApi<{ holidays: string[] }>(sites.sgp === 'ok' ? calendarPath + 'sgp' : null);
+  const msystech = useApi<{ rows: LineDayMetrics[] }>(sites.systech === 'ok' ? metricsPath + 'systech' : null);
+  const csystech = useApi<{ holidays: string[] }>(sites.systech === 'ok' ? calendarPath + 'systech' : null);
+  const metrics = {
+    data: { rows: [...(minternal.data?.rows ?? []), ...(msgp.data?.rows ?? []), ...(msystech.data?.rows ?? [])] },
+    loading: minternal.loading || msgp.loading || msystech.loading,
+  };
+  const calendars: Record<string, string[]> = {
+    internal: cinternal.data?.holidays ?? [],
+    sgp: csgp.data?.holidays ?? [],
+    systech: csystech.data?.holidays ?? [],
+  };
   const selDate = `${month}-${pad(state.day)}`;
   const reports = useApi<Report[]>(
     state.line ? `/api/v3/reporting/reports?start=${selDate}&end=${selDate}&line=${encodeURIComponent(state.line)}` : null,
@@ -144,25 +155,23 @@ export function Monitoring({ site }: { readonly site: string }) {
   const calRef = useRef<HTMLDialogElement>(null);
   const [calSite, setCalSite] = useState('internal');
 
-  const holidays = new Set(calendar.data?.holidays ?? []);
-  const isWork = (day: number): boolean => !holidays.has(`${month}-${pad(day)}`);
-  const workDays = dayList(`${month}-01`, monthEnd).filter((d) => !holidays.has(d)).length;
-  const elapsedWork = (n: number): number => dayList(`${month}-01`, `${month}-${pad(n)}`).filter((d) => !holidays.has(d)).length;
-
+  const isWork = (day: number, loc = calSite) => !(calendars[loc] ?? []).includes(`${month}-${pad(day)}`);
+  const elapsedWork = (day: number, loc: string) =>
+    dayList(`${month}-01`, `${month}-${pad(day)}`).filter((d) => !(calendars[loc] ?? []).includes(d)).length;
   const targetBy = new Map((planning.data?.lines ?? []).map((t) => [t.line_code, t]));
   const data: MRow[] = (lines.data ?? [])
-    .filter((l) => l.location === 'internal')
+    .filter((l) => sites[l.location] === 'ok')
     .map((l) => {
       const daily = new Map(
         (metrics.data?.rows ?? []).filter((r) => r.line === l.line_code && r.date).map((r) => [Number(r.date?.slice(8)), r]),
       );
       const t = targetBy.get(l.line_code);
       const monthly = t ? Number(t.target) : null; // Number(): tahan terhadap target yang datang sebagai string
-      const days = t ? t.work_days : workDays;
+      const days = t ? t.work_days : elapsedWork(nDays, l.location);
       const dailyTarget = monthly !== null && days ? monthly / days : null;
       const actualList = [...daily.values()].filter((r) => r.reports > 0);
       const actual = actualList.length ? actualList.reduce((a, r) => a + r.actual, 0) : null;
-      const toDate = dailyTarget !== null ? dailyTarget * elapsedWork(cutoffDay) : null;
+      const toDate = dailyTarget !== null ? dailyTarget * elapsedWork(cutoffDay, l.location) : null;
       return {
         line: l.line_code,
         site: l.location,
@@ -185,13 +194,13 @@ export function Monitoring({ site }: { readonly site: string }) {
     return day <= cutoffDay && m && m.reports > 0 ? m.actual : null;
   };
   const dayTarget = (r: MRow, day: number): number | null => {
-    if (!isWork(day)) return 0;
+    if (!isWork(day, r.site)) return 0;
     if (r.dailyTarget !== null) return r.dailyTarget;
     const p = r.daily.get(day)?.plan;
     return p && p > 0 ? p : null;
   };
   const dayClass = (r: MRow, day: number): string => {
-    if (!isWork(day)) return 'off';
+    if (!isWork(day, r.site)) return 'off';
     const q = dailyOutput(r, day);
     if (q === null) return 'missing';
     return band(q, dayTarget(r, day));
@@ -377,7 +386,7 @@ export function Monitoring({ site }: { readonly site: string }) {
                     <tr role="row" key={s}>
                       <th scope="row" role="rowheader">
                         {siteName(s)}
-                        {s !== 'internal' ? <small> · On Hold</small> : null}
+                        {sites[s] !== 'ok' ? <small> · {sites[s] === 'on_hold' ? 'On Hold' : 'Menunggu sinkronisasi'}</small> : null}
                       </th>
                       {kcell('Output Plan', output(plan))}
                       {kcell('Output Actual', output(actual))}
@@ -590,7 +599,7 @@ export function Monitoring({ site }: { readonly site: string }) {
                   ) : (
                     <tr>
                       <td colSpan={10 + ds.length} className="empty">
-                        {state.location !== 'all' && state.location !== 'internal'
+                        {state.location !== 'all' && sites[state.location] === 'on_hold'
                           ? 'Lokasi ini On Hold — data subcont belum tersambung.'
                           : lines.loading || metrics.loading
                             ? 'Memuat…'
@@ -667,7 +676,7 @@ export function Monitoring({ site }: { readonly site: string }) {
           dailyOutput={dailyOutput}
           dayTarget={dayTarget}
           band={band}
-          isWork={isWork}
+          isWork={(d) => isWork(d, selected?.site)}
           loading={reports.loading}
         />
         <p className="footer">Sumber: laporan i-Reporter (ConMas) · target line dari Settings → Target Produksi.</p>
@@ -686,8 +695,12 @@ export function Monitoring({ site }: { readonly site: string }) {
         <div className="dialog-inner">
           <label className="calendar-site">
             Lokasi{' '}
-            <select id="calendar-location" value={calSite} onChange={(e) => setCalSite(e.target.value)} disabled>
-              <option value="internal">{siteName('internal')}</option>
+            <select id="calendar-location" value={calSite} onChange={(e) => setCalSite(e.target.value)}>
+              {SITES.map((s) => (
+                <option key={s} value={s}>
+                  {siteName(s)}
+                </option>
+              ))}
             </select>
           </label>
           <div className="calendar" id="calendar-body">

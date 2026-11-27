@@ -3,7 +3,7 @@ import type { ConmasReader } from '../../db/conmas.js';
 import type { ColumnKey } from '../../columns/reportColumns.js';
 import { placeholders, toNum, toNum0, toText, type ColumnSql } from './columns.js';
 
-const NUMERIC_KEYS = [
+export const NUMERIC_KEYS = [
   'oee',
   'availability',
   'performance',
@@ -31,7 +31,7 @@ const NUMERIC_KEYS = [
   'change_point',
 ] as const satisfies readonly ColumnKey[];
 
-const TEXT_KEYS = ['shift', 'cell_leader', 'teknisi', 'inspector', 'group', 'line_leader'] as const satisfies readonly ColumnKey[];
+export const TEXT_KEYS = ['shift', 'cell_leader', 'teknisi', 'inspector', 'group', 'line_leader'] as const satisfies readonly ColumnKey[];
 
 export type NumericKey = (typeof NUMERIC_KEYS)[number];
 export type TextKey = (typeof TEXT_KEYS)[number];

@@ -57,12 +57,6 @@ export class ExecutiveService {
     return (this.opts.clock ?? Date.now)();
   }
 
-  statusOf(tempat: Tempat): SourceStatus {
-    if (tempat === 'internal') return 'ok';
-    // Push-sync snapshot belum dipakai di tahap ini (Fase Subcont HOLD).
-    return this.opts.subcontEnabled ? 'unavailable' : 'on_hold';
-  }
-
   async getCalendar(tempat: Tempat, year: number, month: number): Promise<{ holidays: string[]; version: number | null }> {
     const { rows } = await this.db.query(
       `SELECT holidays, version FROM calendar_exceptions WHERE location = $1 AND year = $2 AND month = $3`,
@@ -85,22 +79,26 @@ export class ExecutiveService {
   }
 
   /** Actual bulanan internal dengan cache singkat (default 30 detik, sama dengan dashboard lama). */
-  async monthlyActual(year: number, month: number): Promise<number> {
-    const key = `${year}-${month}`;
+  async monthlyActual(year: number, month: number, site: Tempat = 'internal'): Promise<number | null> {
+    const key = `${site}-${year}-${month}`;
     const hit = this.cache.get(key);
     if (hit && this.now() - hit.at < this.opts.cacheSec * 1000) return hit.value;
     const start = `${year}-${pad2(month)}-01`;
     const end = `${year}-${pad2(month)}-${pad2(daysInMonth(year, month))}`;
-    const summary = await this.reporting.rangeSummary(start, end, 'internal');
+    if ((await this.reporting.statusOfSite(site, start, end)) !== 'ok') return null;
+    const summary = await (await this.reporting.forSite(site)).rangeSummary(start, end, site);
+    if (site !== 'internal' && !summary.hasData) return null;
     this.cache.set(key, { at: this.now(), value: summary.output_actual });
     return summary.output_actual;
   }
 
-  async month(year: number, month: number) {
+  async month(year: number, month: number, scope: readonly string[] = []) {
     const today = toWib(this.now());
     const locations: LocationAchievement[] = [];
-    for (const tempat of TEMPAT_LIST) {
-      const status = this.statusOf(tempat);
+    for (const tempat of TEMPAT_LIST.filter((t) => !scope.length || scope.includes(t))) {
+      const ym = year + '-' + pad2(month);
+      const status = await this.reporting.statusOfSite(tempat, ym + '-01', ym + '-' + pad2(daysInMonth(year, month)));
+      const reporting = await this.reporting.forSite(tempat);
       const cal = await this.getCalendar(tempat, year, month);
       const target = await this.getTarget(tempat, year, month);
       const wd = workingDays(year, month, cal.holidays);
@@ -108,23 +106,23 @@ export class ExecutiveService {
       let achievement: Achievement | null = null;
       let split: SplitAchievement | null = null;
       let daily: { date: string; actual: number } | null = null;
-      const monthActual = status === 'ok' ? await this.monthlyActual(year, month) : null;
+      const monthActual = status === 'ok' ? await this.monthlyActual(year, month, tempat) : null;
       if (status === 'ok') {
         const todayIso = formatIsoDate(today);
         const start = `${year}-${pad2(month)}-01`;
         const monthEnd = `${year}-${pad2(month)}-${pad2(daysInMonth(year, month))}`;
         const end = monthEnd < todayIso ? monthEnd : todayIso;
         if (start <= end) {
-          const last = (await this.reporting.rangeTrend(start, end, { location: 'internal' })).days.filter((d) => d.hasData).at(-1);
+          const last = (await reporting.rangeTrend(start, end, { location: tempat })).days.filter((d) => d.hasData).at(-1);
           if (last) daily = { date: last.date, actual: last.actual };
         }
       }
-      if (status === 'ok' && target) {
-        const actual = await this.monthlyActual(year, month);
+      if (status === 'ok' && target && monthActual !== null) {
+        const actual = monthActual;
         achievement = computeAchievement({ target: target.target, actual, workingDays: wd, elapsedWorkingDays: ewd });
         const todayIso = formatIsoDate(today);
         const todayInMonth = todayIso.startsWith(`${year}-${pad2(month)}-`);
-        const actualToday = todayInMonth ? (await this.reporting.rangeSummary(todayIso, todayIso, 'internal')).output_actual : 0;
+        const actualToday = todayInMonth ? (await reporting.rangeSummary(todayIso, todayIso, tempat)).output_actual : 0;
         split = splitAchievement({
           dailyTarget: achievement.dailyTarget,
           elapsedWorkingDaysBefore: elapsedWorkingDaysBefore(year, month, cal.holidays, today),
@@ -163,8 +161,9 @@ export class ExecutiveService {
   }
 
   /** Kumulatif target vs actual per bulan sepanjang tahun. */
-  async trend(year: number, tempat?: Tempat) {
-    const targets = tempat ? [tempat] : TEMPAT_LIST.filter((t) => this.statusOf(t) === 'ok');
+  async trend(year: number, tempat?: Tempat, scope: readonly string[] = []) {
+    const statuses = new Map(await Promise.all(TEMPAT_LIST.map(async (t) => [t, await this.reporting.statusOfSite(t)] as const)));
+    const targets = tempat ? [tempat] : TEMPAT_LIST.filter((t) => (!scope.length || scope.includes(t)) && statuses.get(t) === 'ok');
     const months = [];
     let cumTarget = 0;
     let cumActual = 0;
@@ -173,20 +172,24 @@ export class ExecutiveService {
       let target = 0;
       let actual: number | null = 0;
       for (const t of targets) {
-        if (this.statusOf(t) !== 'ok') {
+        if (statuses.get(t) !== 'ok') {
           actual = null;
           continue;
         }
         target += (await this.getTarget(t, year, m))?.target ?? 0;
         const future = year > currentYm.getUTCFullYear() || (year === currentYm.getUTCFullYear() && m > currentYm.getUTCMonth() + 1);
-        if (!future && actual !== null) actual += await this.monthlyActual(year, m);
+        if (!future && actual !== null) {
+          const value = await this.monthlyActual(year, m, t);
+          if (value !== null) actual += value;
+          else if (tempat) actual = null;
+        }
         if (future) actual = null;
       }
       cumTarget += target;
       if (actual !== null) cumActual += actual;
       months.push({ month: m, target, actual, cumTarget, cumActual: actual === null ? null : cumActual });
     }
-    return { year, tempat: tempat ?? 'all', status: tempat ? this.statusOf(tempat) : 'ok', months };
+    return { year, tempat: tempat ?? 'all', status: tempat ? statuses.get(tempat) : 'ok', months };
   }
 
   static validHolidays(year: number, month: number, dates: readonly string[]): string[] {

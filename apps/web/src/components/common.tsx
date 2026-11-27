@@ -178,6 +178,7 @@ export function LocTabs({
   readonly prefix: string;
   readonly counts: Readonly<Record<string, SiteCount | null>>;
 }) {
+  const { sites } = useConfig();
   return (
     <div className="tabs" role="navigation" aria-label="Lokasi">
       {SITES.map((x) => {
@@ -185,7 +186,15 @@ export function LocTabs({
         return (
           <a key={x} className="lt" href={`#${prefix}${x}`} {...(x === current ? { 'aria-current': 'page' as const } : {})}>
             <b>{siteName(x)}</b>
-            <small>{c ? `${c.active}/${c.total} line aktif` : 'On Hold'}</small>
+            <small>
+              {c
+                ? `${c.active}/${c.total} line aktif`
+                : sites[x] === 'on_hold'
+                  ? 'On Hold'
+                  : sites[x] === 'unavailable'
+                    ? 'Menunggu sinkronisasi'
+                    : '—'}
+            </small>
           </a>
         );
       })}

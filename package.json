@@ -29,7 +29,8 @@
     "db:seed:admin": "tsx scripts/createAdmin.ts",
     "validate:columns": "tsx scripts/validateColumns.ts",
     "verify": "npm run validate:columns && npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build",
-    "dev:mem": "npm run build -w @v3/shared && npm run build -w @v3/web && tsx apps/api/src/devtools/memServer.ts"
+    "dev:mem": "npm run build -w @v3/shared && npm run build -w @v3/web && tsx apps/api/src/devtools/memServer.ts",
+    "subcont:push": "node --env-file=.env.subcont --import tsx scripts/subcontSender.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

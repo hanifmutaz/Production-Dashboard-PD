@@ -9,6 +9,7 @@ import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
 import { recordAudit } from '../audit/auditService.js';
 import type { ConmasRepository } from '../reporting/conmasRepository.js';
+import { SnapshotRepository } from '../sync/day.js';
 import { activeProduct } from '../reporting/reportingService.js';
 import type { SettingsService } from '../settings/settingsService.js';
 import type { LineRecord, LinesRepository } from './linesRepository.js';
@@ -27,8 +28,12 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
     if (seriesCache && seriesCache.expires > Date.now()) return seriesCache.map;
     seriesLoading ??= (async () => {
       try {
-        const codes = (await repo.listAll()).filter((l) => l.location === 'internal').map((l) => l.line_code);
-        const latest = await conmas.fetchLatestRowPerLine(codes);
+        const lines = await repo.listAll();
+        const latest = await conmas.fetchLatestRowPerLine(lines.filter((l) => l.location === 'internal').map((l) => l.line_code));
+        for (const site of ['sgp', 'systech']) {
+          const codes = lines.filter((l) => l.location === site && !l.product).map((l) => l.line_code);
+          if (codes.length) latest.push(...(await new SnapshotRepository(pool, site).fetchLatestRowPerLine(codes).catch(() => [])));
+        }
         const map = new Map<string, string>();
         for (const row of latest) {
           // Produk aktif = slot terakhir yang terisi; bila tidak ada, pakai nama produk terisi terakhir di report itu.

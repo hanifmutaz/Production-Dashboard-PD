@@ -1,3 +1,4 @@
+import { useConfig } from '../lib/kpi';
 // Port V.stoptime + stRows mockup → /reporting/summary/range, /line-metrics, /stoptime.
 import { useState } from 'react';
 import type { LineDayMetrics, SummaryTotals } from '@v3/shared';
@@ -31,21 +32,22 @@ export function Stoptime({ site }: { readonly site: string }) {
   const start = `${today.slice(0, 7)}-01`;
   const counts = useSiteCounts(today);
   const [cat, setCat] = useState('all');
-  const internal = site === 'internal';
-  const month = useApi<Summary>(internal ? `/api/v3/reporting/summary/range?start=${start}&end=${today}&location=internal` : null);
-  const day = useApi<Summary>(internal ? `/api/v3/reporting/summary/range?start=${today}&end=${today}&location=internal` : null);
+  const { sites } = useConfig();
+  const active = site === 'internal' || sites[site] === 'ok';
+  const month = useApi<Summary>(active ? `/api/v3/reporting/summary/range?start=${start}&end=${today}&location=${site}` : null);
+  const day = useApi<Summary>(active ? `/api/v3/reporting/summary/range?start=${today}&end=${today}&location=${site}` : null);
   const lines = useApi<{ rows: LineDayMetrics[] }>(
-    internal ? `/api/v3/reporting/line-metrics?start=${start}&end=${today}&location=internal` : null,
+    active ? `/api/v3/reporting/line-metrics?start=${start}&end=${today}&location=${site}` : null,
   );
-  const events = useApi<{ events: StopEvent[] }>(
-    internal ? `/api/v3/reporting/stoptime?start=${start}&end=${today}&location=internal` : null,
-  );
+  const events = useApi<{ events: StopEvent[] }>(active ? `/api/v3/reporting/stoptime?start=${start}&end=${today}&location=${site}` : null);
 
-  if (!internal) {
+  if (!active) {
     return (
       <div className="page">
         <LocTabs current={site} prefix="stoptime-" counts={counts} />
-        <Soon>Lokasi ini On Hold — belum ada kejadian stoptime dari subcont.</Soon>
+        <Soon>
+          {sites[site] === 'on_hold' ? 'On Hold' : sites[site] === 'unavailable' ? 'Menunggu sinkronisasi terbaru' : 'Memuat lokasi…'}
+        </Soon>
       </div>
     );
   }

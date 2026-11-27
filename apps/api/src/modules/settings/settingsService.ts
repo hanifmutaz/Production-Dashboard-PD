@@ -62,7 +62,32 @@ const rowsSchema = z
   .strict();
 
 /** Kunci settings dengan skema ketat. Kunci lain disimpan bebas (maks 64 KB). */
+const hour = z.number().int().min(0).max(23);
+const siteShift = z
+  .object({
+    shift2StartHour: hour,
+    shift2EndHourWeekday: hour,
+    shift2EndHourFriday: hour,
+    shift2NightStartHour: hour,
+    shift3StartHour: hour,
+    shift3SecondStartHour: hour,
+    shift3ThirdStartHour: hour,
+    hourlySlotOffset: z.number().int().min(-12).max(12),
+  })
+  .strict()
+  .refine(
+    (s) =>
+      s.shift2StartHour < s.shift2EndHourWeekday &&
+      s.shift2StartHour < s.shift2EndHourFriday &&
+      Math.max(s.shift2EndHourWeekday, s.shift2EndHourFriday) <= s.shift2NightStartHour &&
+      s.shift3StartHour < s.shift3SecondStartHour &&
+      s.shift3SecondStartHour < s.shift3ThirdStartHour,
+    'Urutan jam shift tidak valid',
+  );
 export const STRICT_SETTINGS: Readonly<Record<string, z.ZodType>> = {
+  'shift.internal': siteShift,
+  'shift.sgp': siteShift,
+  'shift.systech': siteShift,
   line_status: lineStatusSchema,
   line_discovery: lineDiscoverySchema,
   'config.kpi': kpiSchema,
@@ -106,6 +131,14 @@ export class SettingsService {
     return { ...parsed.data, requiredFields: [...new Set(parsed.data.requiredFields)] };
   }
 
+  async siteShift(site: string) {
+    const v = siteShift.safeParse(await this.raw('shift.' + site));
+    return v.success
+      ? v.data
+      : site === 'internal'
+        ? {}
+        : { shift2StartHour: 8, shift2EndHourWeekday: 20, shift2EndHourFriday: 20, shift2NightStartHour: 20, hourlySlotOffset: 2 };
+  }
   shiftConfig(): Readonly<Record<string, number>> {
     return this.defaults.shift ?? {};
   }

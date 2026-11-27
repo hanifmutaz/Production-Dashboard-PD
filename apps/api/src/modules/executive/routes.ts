@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requirePermission } from '../../http/auth.js';
-import { badRequest, parseInput } from '../../http/errors.js';
+import { canSeeLocation, requirePermission } from '../../http/auth.js';
+import { forbidden, badRequest, parseInput } from '../../http/errors.js';
 import { isoDate, month, tempat, versionField, year } from '../../http/schemas.js';
 import type { DbPool } from '../../db/pool.js';
 import { withTransaction } from '../../db/pool.js';
@@ -15,7 +15,7 @@ export function executiveRoutes(svc: ExecutiveService, pool: DbPool): Router {
   r.get('/month', requirePermission('dashboard.view'), async (req, res, next) => {
     try {
       const q = parseInput(z.object({ year, month }), req.query);
-      res.json({ data: await svc.month(q.year, q.month), status: 'ok' });
+      res.json({ data: await svc.month(q.year, q.month, req.principal?.locations), status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -25,7 +25,8 @@ export function executiveRoutes(svc: ExecutiveService, pool: DbPool): Router {
     try {
       const q = parseInput(z.object({ year, tempat: tempat.optional() }), req.query);
       const t = q.tempat;
-      res.json({ data: await svc.trend(q.year, t && isTempat(t) ? t : undefined), status: 'ok' });
+      if (t && !canSeeLocation(req.principal?.locations ?? [], t)) throw forbidden();
+      res.json({ data: await svc.trend(q.year, t && isTempat(t) ? t : undefined, req.principal?.locations), status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -43,6 +44,7 @@ export function executiveRoutes(svc: ExecutiveService, pool: DbPool): Router {
         }),
         req.body,
       );
+      if (!canSeeLocation(req.principal?.locations ?? [], b.tempat)) throw forbidden();
       const userId = req.principal?.id ?? null;
       const row = await withTransaction(pool, async (tx) => {
         const saved = await saveVersioned(tx, {
@@ -69,6 +71,7 @@ export function executiveRoutes(svc: ExecutiveService, pool: DbPool): Router {
   r.get('/calendar', requirePermission('dashboard.view', 'config.view'), async (req, res, next) => {
     try {
       const q = parseInput(z.object({ year, month, tempat }), req.query);
+      if (!canSeeLocation(req.principal?.locations ?? [], q.tempat)) throw forbidden();
       if (!isTempat(q.tempat)) throw badRequest('tempat tidak valid');
       res.json({ data: await svc.getCalendar(q.tempat, q.year, q.month), status: 'ok' });
     } catch (e) {
@@ -89,6 +92,7 @@ export function executiveRoutes(svc: ExecutiveService, pool: DbPool): Router {
         req.body,
       );
       const holidays = ExecutiveService.validHolidays(b.year, b.month, b.holidays);
+      if (!canSeeLocation(req.principal?.locations ?? [], b.tempat)) throw forbidden();
       const userId = req.principal?.id ?? null;
       const row = await withTransaction(pool, async (tx) => {
         const saved = await saveVersioned(tx, {

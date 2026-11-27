@@ -83,13 +83,25 @@ function nullableStoptime(target: number | null, efektif: number | null): number
 
 export class ReportingService {
   constructor(
-    private readonly conmas: ConmasRepository,
+    private readonly conmas: Pick<
+      ConmasRepository,
+      'fetchDetailRows' | 'fetchLatestRowPerLine' | 'aggregateByLineDate' | 'fetchSlotEvents'
+    >,
     private readonly lines: LinesRepository,
     private readonly cfg: ShiftConfig,
     private readonly settings: SettingsService,
     private readonly clock: Clock = Date.now,
+    private readonly resolveSite?: (site: string) => Promise<ReportingService>,
+    readonly statusOfSite: (site: string, start?: string, end?: string) => Promise<'ok' | 'unavailable' | 'on_hold'> = async (site) =>
+      site === 'internal' ? 'ok' : 'on_hold',
   ) {}
 
+  async forSite(site: string) {
+    return this.resolveSite ? this.resolveSite(site) : this;
+  }
+  async lineSite(code: string) {
+    return (await this.requireLine(code)).location;
+  }
   private nowWib(): Date {
     return toWib(this.clock());
   }
