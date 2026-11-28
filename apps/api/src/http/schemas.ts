@@ -1,8 +1,9 @@
-import { eachDate, isIsoDate, TEMPAT_LIST } from '@v3/shared';
+import { eachDate, isIsoDate, TEMPAT_LIST, validLocationScope } from '@v3/shared';
 import { z } from 'zod';
 
 export const isoDate = z.string().refine(isIsoDate, 'format tanggal harus YYYY-MM-DD dan valid');
 export const tempat = z.enum(TEMPAT_LIST as [string, ...string[]]);
+export const locationScope = z.array(tempat).refine(validLocationScope, 'Pilih satu lokasi atau seluruh lokasi secara eksplisit');
 export const lineCode = z
   .string()
   .trim()

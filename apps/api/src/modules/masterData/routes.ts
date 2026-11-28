@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { seriesFromProductName } from '@v3/shared';
 import { z } from 'zod';
-import { canSeeLocation, principalOf, requirePermission } from '../../http/auth.js';
+import { canSeeLocation, principalOf, requireCentralScope, requirePermission } from '../../http/auth.js';
 import { isProductionLine } from './lineCodes.js';
-import { badRequest, notFound, parseInput } from '../../http/errors.js';
+import { badRequest, forbidden, notFound, parseInput } from '../../http/errors.js';
 import { lineCode, tempat, versionField } from '../../http/schemas.js';
 import { withTransaction, type DbPool } from '../../db/pool.js';
 import { saveVersioned } from '../../db/optimistic.js';
@@ -94,8 +94,12 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
         }),
         req.body,
       );
+      const { locations } = principalOf(req);
+      if (!canSeeLocation(locations, b.tempat)) throw forbidden();
       if (b.tempat === 'internal' && b.active && !isProductionLine(code)) throw badRequest('Gunakan kode line induk yang berakhir angka.');
       const row = await withTransaction(pool, async (tx) => {
+        const existing = await tx.query('SELECT location FROM lines WHERE line_code = $1 FOR UPDATE', [code]);
+        if (existing.rows[0] && !canSeeLocation(locations, String(existing.rows[0]['location']))) throw forbidden();
         const saved = await saveVersioned(tx, {
           version: b.version,
           insertSql: `INSERT INTO lines (line_code, description, shift_scheme, location, active, product, external_code, cycle_time)
@@ -119,6 +123,8 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
     try {
       const code = parseInput(lineCode, req.params['line_code']);
       await withTransaction(pool, async (tx) => {
+        const existing = await tx.query('SELECT location FROM lines WHERE line_code = $1 FOR UPDATE', [code]);
+        if (!existing.rows[0] || !canSeeLocation(principalOf(req).locations, String(existing.rows[0]['location']))) throw forbidden();
         const { rowCount } = await tx.query(
           `UPDATE lines SET active = false, version = version + 1, updated_at = now() WHERE line_code = $1`,
           [code],
@@ -132,7 +138,7 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
     }
   });
 
-  r.get('/discover', requirePermission('config.edit'), async (_req, res, next) => {
+  r.get('/discover', requirePermission('config.edit'), requireCentralScope, async (_req, res, next) => {
     try {
       const known = new Set((await repo.listAll()).map((l) => l.line_code));
       const found = (await conmas.distinctLines()).filter((l) => isProductionLine(l) && !known.has(l));
@@ -143,7 +149,7 @@ export function linesRoutes(repo: LinesRepository, conmas: ConmasRepository, poo
   });
 
   /** Daftarkan line baru hasil discovery. Default skema shift & lokasi dari Settings → line_discovery (OQ-017). */
-  r.post('/sync', requirePermission('config.edit'), async (req, res, next) => {
+  r.post('/sync', requirePermission('config.edit'), requireCentralScope, async (req, res, next) => {
     try {
       const known = new Set((await repo.listAll()).map((l) => l.line_code));
       const found = (await conmas.distinctLines()).filter((l) => isProductionLine(l) && !known.has(l));

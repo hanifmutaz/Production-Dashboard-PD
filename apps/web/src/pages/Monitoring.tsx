@@ -10,7 +10,7 @@ import { dayList, lastOfMonth, pad } from '../lib/dates';
 import { MON } from '../lib/format';
 import { Icon } from '../lib/icons';
 import { useConfig } from '../lib/kpi';
-import { siteName, SITES } from '../lib/sites';
+import { siteName, visibleSites } from '../lib/sites';
 import { useApi } from '../lib/useApi';
 
 const Host = 'production-monitoring' as unknown as 'div';
@@ -98,6 +98,8 @@ export function Monitoring({ site }: { readonly site: string }) {
   const [hostRef, shadow] = useShadow();
   const { me } = useAuth();
   const { kpi, raw, sites } = useConfig();
+  const visible = visibleSites(me);
+  const multi = visible.length > 1;
   const today = me?.today ?? '';
   const month = today.slice(0, 7);
   const monthEnd = lastOfMonth(month);
@@ -153,7 +155,7 @@ export function Monitoring({ site }: { readonly site: string }) {
     state.line ? `/api/v3/reporting/stoptime?start=${selDate}&end=${selDate}&line=${encodeURIComponent(state.line)}` : null,
   );
   const calRef = useRef<HTMLDialogElement>(null);
-  const [calSite, setCalSite] = useState('internal');
+  const [calSite, setCalSite] = useState<string>(visible[0] ?? 'internal');
 
   const isWork = (day: number, loc = calSite) => !(calendars[loc] ?? []).includes(`${month}-${pad(day)}`);
   const elapsedWork = (day: number, loc: string) =>
@@ -283,7 +285,7 @@ export function Monitoring({ site }: { readonly site: string }) {
     if (target && (innerWidth < 800 || target.getBoundingClientRect().top > innerHeight - 120)) target.scrollIntoView({ block: 'start' });
   };
 
-  const siteTotals = SITES.map((s) => ({ site: s, ...summarize(data.filter((r) => r.site === s)) }));
+  const siteTotals = visible.map((s) => ({ site: s, ...summarize(data.filter((r) => r.site === s)) }));
   const attainment = (a: number | null, p: number | null): number => (p && a !== null ? Math.max(0, a / p) : 0);
   const maxAtt = Math.max(1.25, ...siteTotals.map((t) => attainment(t.actual, t.plan)));
   const scale = (v: number): string => `${((v / maxAtt) * 100).toFixed(3)}%`;
@@ -330,7 +332,7 @@ export function Monitoring({ site }: { readonly site: string }) {
         </div>
         <section className="scope-summary" aria-labelledby="summary-heading">
           <h2 className="summary-heading" id="summary-heading">
-            Ringkasan Semua Lokasi
+            {multi ? 'Ringkasan Semua Lokasi' : 'Ringkasan Produksi'}
           </h2>
           <div className="kpis" id="kpis">
             {cards.map(([name, label, value, unit, color, hint]) => (
@@ -363,7 +365,7 @@ export function Monitoring({ site }: { readonly site: string }) {
             ))}
           </div>
         </section>
-        <section className="panel site-kpi-summary" aria-labelledby="site-kpi-title">
+        {multi && (<section className="panel site-kpi-summary" aria-labelledby="site-kpi-title">
           <header className="module-head">
             <h2 id="site-kpi-title">KPI per Lokasi</h2>
             <small className="site-compare-key">Garis target 100%</small>
@@ -435,7 +437,7 @@ export function Monitoring({ site }: { readonly site: string }) {
               </tbody>
             </table>
           </div>
-        </section>
+        </section>)}
         <section className="panel" id="matrix-panel" aria-labelledby="matrix-title">
           <header className="module-head">
             <div>
@@ -455,7 +457,7 @@ export function Monitoring({ site }: { readonly site: string }) {
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setCalSite(selected?.site ?? 'internal');
+                  setCalSite(selected?.site ?? visible[0] ?? 'internal');
                   calRef.current?.showModal();
                 }}
               >
@@ -466,8 +468,8 @@ export function Monitoring({ site }: { readonly site: string }) {
               </button>
             </div>
           </header>
-          <div className="matrix-locations" id="location-tabs" role="tablist" aria-label="Lokasi Target vs Actual">
-            {(['all', ...SITES] as string[]).map((id) => (
+          {multi && (<div className="matrix-locations" id="location-tabs" role="tablist" aria-label="Lokasi Target vs Actual">
+            {(['all', ...visible] as string[]).map((id) => (
               <button
                 key={id}
                 type="button"
@@ -483,8 +485,8 @@ export function Monitoring({ site }: { readonly site: string }) {
                 {id === 'all' ? 'Semua Lokasi' : siteName(id)}
               </button>
             ))}
-          </div>
-          <div id="location-table" role="tabpanel" aria-labelledby={`location-tab-${state.location}`}>
+          </div>)}
+          <div id="location-table" role={multi ? 'tabpanel' : 'region'} aria-labelledby={multi ? `location-tab-${state.location}` : 'matrix-title'}>
             <div
               className="matrix-scroll"
               id="matrix-scroll"
@@ -693,16 +695,16 @@ export function Monitoring({ site }: { readonly site: string }) {
           </form>
         </div>
         <div className="dialog-inner">
-          <label className="calendar-site">
+          {multi && (<label className="calendar-site">
             Lokasi{' '}
             <select id="calendar-location" value={calSite} onChange={(e) => setCalSite(e.target.value)}>
-              {SITES.map((s) => (
+              {visible.map((s) => (
                 <option key={s} value={s}>
                   {siteName(s)}
                 </option>
               ))}
             </select>
-          </label>
+          </label>)}
           <div className="calendar" id="calendar-body">
             <table>
               <thead>

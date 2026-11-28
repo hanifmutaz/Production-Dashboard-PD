@@ -6,7 +6,7 @@ const viewer: Me = {
   role: 'viewer',
   name: 'Trial',
   permissions: ['dashboard.view'],
-  locations: [],
+  locations: ['internal', 'sgp', 'systech'],
   menus: [],
   line: null,
   today: '',
@@ -22,6 +22,15 @@ describe('otorisasi menu dan tautan Settings', () => {
   it.each(['config.view', 'config.edit', 'users.manage', 'devices.manage', 'audit.view'])('memeriksa izin %s dan cakupan menu', (p) => {
     expect(allowedRoute({ ...viewer, permissions: [p], menus: ['settings'] }, 'settings')).toBe(true);
     expect(allowedRoute({ ...viewer, permissions: [p], menus: ['hub'] }, 'settings')).toBe(false);
+  });
+  it.each(['sgp', 'systech'])('scope %s hanya membuka halaman sendiri', (site) => {
+    const local = { ...viewer, locations: [site] };
+    for (const page of ['master', 'stoptime', 'monitoring-output']) {
+      expect(allowedRoute(local, `${page}-${site}`)).toBe(true);
+      expect(allowedRoute(local, `${page}-internal`)).toBe(false);
+      expect(allowedRoute(local, `${page}-${site === 'sgp' ? 'systech' : 'sgp'}`)).toBe(false);
+    }
+    expect(allowedRoute({ ...viewer, locations: [] }, 'hub')).toBe(false);
   });
   it('perangkat hanya dapat membuka layar pairing', () => {
     const tv: Me = { ...viewer, kind: 'device', screen: 'hub', permissions: ['config.edit'] };

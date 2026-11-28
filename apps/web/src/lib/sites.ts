@@ -2,6 +2,11 @@
 export const SITES = ['internal', 'sgp', 'systech'] as const;
 export type Site = (typeof SITES)[number];
 
+/** Scope dari sesi server, bukan dari pilihan UI atau status sinkronisasi. */
+export function visibleSites(me: { readonly locations: readonly string[] } | null): Site[] {
+  return SITES.filter((site) => me?.locations.includes(site));
+}
+
 export const SITE_INFO: Readonly<Record<Site, { readonly name: string; readonly color: string }>> = {
   internal: { name: 'Hirose Internal', color: 'var(--acc)' },
   sgp: { name: 'Subcont SGP', color: 'var(--ok)' },

@@ -5,6 +5,15 @@ import type { LineStatus } from './shift.js';
 export type Tempat = 'internal' | 'sgp' | 'systech';
 export const TEMPAT_LIST: readonly Tempat[] = ['internal', 'sgp', 'systech'];
 
+/** Scope selalu eksplisit: satu lokasi atau seluruh lokasi untuk Hirose pusat. */
+export function hasAllLocations(scope: readonly string[]): boolean {
+  return scope.length === TEMPAT_LIST.length && TEMPAT_LIST.every((site) => scope.includes(site));
+}
+
+export function validLocationScope(scope: readonly string[]): boolean {
+  return hasAllLocations(scope) || (scope.length === 1 && TEMPAT_LIST.some((site) => site === scope[0]));
+}
+
 /** Status sumber data per lokasi. SGP/Systech = on_hold selama SUBCONT_ENABLED=false. */
 export type SourceStatus = 'ok' | 'on_hold' | 'unavailable';
 

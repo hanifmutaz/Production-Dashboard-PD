@@ -25,7 +25,8 @@ export function reportingRoutes(root: ReportingService): Router {
       month?: number;
     },
   ) {
-    const location = q.line ? await root.lineSite(q.line) : (q.location ?? 'internal');
+    const scope = req.principal?.locations ?? [];
+    const location = q.line ? await root.lineSite(q.line) : (q.location ?? (scope.length === 1 ? (scope[0] ?? 'internal') : 'internal'));
     if ((q.location && location !== q.location) || !canSeeLocation(req.principal?.locations ?? [], location))
       throw forbidden('Lokasi di luar cakupan akun Anda');
     const month = q.year && q.month ? q.year + '-' + pad2(q.month) : undefined;

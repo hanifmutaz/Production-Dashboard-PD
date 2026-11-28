@@ -161,6 +161,7 @@ describe('akses: custom role & perangkat', () => {
       display_name: 'Meet',
       password: 'password-panjang-1',
       role: 'meeting',
+      locations: ['internal', 'sgp', 'systech'],
     });
     const meet = await loginAs(h, 'meet1', 'password-panjang-1');
     expect((await meet.get('/api/v3/auth/me')).body.data.menus).toEqual(['lines', 'monitoring-output']);
@@ -193,10 +194,10 @@ describe('daftar & ubah akun', () => {
     const list = await admin.get('/api/v3/access/users');
     const op = list.body.data.find((u: { username: string }) => u.username === 'op1');
     expect(op).toMatchObject({ role: 'viewer', locations: ['internal'], version: 1 });
-    expect((await admin.patch(`/api/v3/access/users/${id}`, { role: 'supervisor', locations: [], version: 1 })).status).toBe(200);
+    expect((await admin.patch(`/api/v3/access/users/${id}`, { role: 'supervisor', locations: ['internal', 'sgp', 'systech'], version: 1 })).status).toBe(200);
     expect((await admin.patch(`/api/v3/access/users/${id}`, { role: 'admin', version: 1 })).status).toBe(409);
     const after = (await admin.get('/api/v3/access/users')).body.data.find((u: { username: string }) => u.username === 'op1');
-    expect(after).toMatchObject({ role: 'supervisor', locations: [], version: 2 });
+    expect(after).toMatchObject({ role: 'supervisor', locations: ['internal', 'sgp', 'systech'], version: 2 });
   });
 });
 

@@ -9,7 +9,7 @@ import { useAuth } from '../lib/auth';
 import { addD, dayList, MIN_D, presetRange, type Range } from '../lib/dates';
 import { fd, fmt } from '../lib/format';
 import { useConfig } from '../lib/kpi';
-import { SITES, siteName, SITE_INFO } from '../lib/sites';
+import { visibleSites, siteName, SITE_INFO } from '../lib/sites';
 import { useApi } from '../lib/useApi';
 
 type Summary = SummaryTotals & { readonly hasData: boolean };
@@ -133,7 +133,8 @@ function LocationCharts({
     </span>
   );
 
-  const series = SITES.map((site) => ({
+  const multi = rows.length > 1;
+  const series = rows.map(({ site }) => ({
     site,
     name: siteName(site),
     values: days.map((d) => {
@@ -143,13 +144,13 @@ function LocationCharts({
   }));
   const trendLabel = days.length === 1 ? fd(days[0] ?? '') : rangeLabel({ f: days[0] ?? '', t: days.at(-1) ?? '', p: '' });
   return (
-    <div className="hub-output-charts">
+    <div className="hub-output-charts" style={multi ? undefined : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
       <section className="card hub-output-trend">
-        <h2>Tren Output Harian per Lokasi</h2>
+        <h2>{multi ? 'Tren Output Harian per Lokasi' : 'Tren Output Harian'}</h2>
         <div className="sb">{trendLabel} · pcs</div>
         <HubTrend days={days} series={series} />
       </section>
-      <div className="hub-output-side">
+      {multi && (<div className="hub-output-side">
         <section className="card">
           <h2>Output Actual vs Plan per Lokasi</h2>
           <div className="sb">{label} · pcs</div>
@@ -195,7 +196,7 @@ function LocationCharts({
             );
           })}
         </section>
-      </div>
+      </div>)}
     </div>
   );
 }
@@ -272,7 +273,10 @@ export function Hub() {
   const sgpTrend = useApi<Trend>(sites.sgp === 'ok' ? trends + 'sgp' : null, refreshKey);
   const systechTrend = useApi<Trend>(sites.systech === 'ok' ? trends + 'systech' : null, refreshKey);
   const trend = { internal: internalTrend.data, sgp: sgpTrend.data, systech: systechTrend.data };
-  const rows = SITES.filter((site) => sites[site]).map((site) => ({
+  const visible = visibleSites(me);
+  const multi = visible.length > 1;
+  const currentSummary = visible[0] === 'sgp' ? sgp : visible[0] === 'systech' ? systech : summary;
+  const rows = visible.map((site) => ({
     site,
     status: sites[site] ?? 'unavailable',
     ok: sites[site] === 'ok',
@@ -326,23 +330,23 @@ export function Hub() {
         <section className="hub-panel" id={`hub-panel-${k}`} role="tabpanel" aria-labelledby={`hub-tab-${k}`} hidden={period !== k} key={k}>
           {period === k ? (
             <>
-              <Sec t={k === 'daily' ? 'Kinerja Produksi Harian' : 'Kinerja Produksi Periode'} s="akumulasi seluruh lokasi">
-                {summary.error ? (
-                  <button className="btn" type="button" onClick={summary.reload}>
+              <Sec t={k === 'daily' ? 'Kinerja Produksi Harian' : 'Kinerja Produksi Periode'} s={multi ? 'akumulasi seluruh lokasi' : siteName(visible[0] ?? '')}>
+                {currentSummary.error ? (
+                  <button className="btn" type="button" onClick={currentSummary.reload}>
                     Muat ulang
                   </button>
                 ) : null}
               </Sec>
-              {summary.error ? (
+              {currentSummary.error ? (
                 <p className="sb" role="alert">
-                  {summary.error}
+                  {currentSummary.error}
                 </p>
               ) : null}
               <HubKpis rows={rows} />
               <LocationCharts rows={rows} days={dayList(trendFrom, end)} trend={trend} label={label} />
               <div className="card np">
                 <div style={{ padding: '16px 18px 6px' }}>
-                  <h2>{k === 'daily' ? 'Ringkasan Kinerja Harian per Lokasi' : 'Ringkasan Kinerja Periode per Lokasi'}</h2>
+                  <h2>{k === 'daily' ? 'Ringkasan Kinerja Harian' : 'Ringkasan Kinerja Periode'}{multi ? ' per Lokasi' : ''}</h2>
                   <div className="sb" style={{ margin: 0 }}>
                     {label}
                   </div>

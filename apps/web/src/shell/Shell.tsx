@@ -3,7 +3,7 @@ import { useAuth } from '../lib/auth';
 import { useConfig } from '../lib/kpi';
 import { Icon } from '../lib/icons';
 import type { Route } from '../lib/router';
-import { SITES, siteName } from '../lib/sites';
+import { visibleSites, siteName } from '../lib/sites';
 import { isDarkTheme, toggleTheme } from '../lib/theme';
 
 // Port DOM shell mockup: aside.side (#nav, #settings-dock), header.mbar.global-bar, main#view.
@@ -71,6 +71,7 @@ function Item({ c, current }: { readonly c: NavItem; readonly current: string })
 
 export function Shell({ route, children }: { readonly route: Route; readonly children: ReactNode }) {
   const { me, can, logout, allowed } = useAuth();
+  const visible = visibleSites(me);
   const { name: appName, department } = useConfig();
   const [rail, setRail] = useState(readRail);
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
@@ -151,18 +152,20 @@ export function Shell({ route, children }: { readonly route: Route; readonly chi
         <nav id="nav" aria-label="Menu utama">
           {NAV.map((g) => {
             if (g.g === 'Data' && !can('export.run')) return null;
+            if (g.g === 'Lokasi' && !visible.some((k) => allowed(`master-${k}`) || allowed(`stoptime-${k}`))) return null;
             return [
               <div className="g" key={`${g.g}-h`}>
                 {g.g}
               </div>,
               <div className="grp" key={`${g.g}-g`}>
                 {g.g === 'Lokasi'
-                  ? SITES.map((k) => {
+                  ? visible.map((k) => {
                       if (!allowed(`master-${k}`) && !allowed(`stoptime-${k}`)) return null;
                       const ch: NavItem[] = [
                         { id: `master-${k}`, t: 'Master Dashboard', ic: 'gauge' },
                         { id: `stoptime-${k}`, t: 'Stoptime', ic: 'clock' },
                       ];
+                      if (visible.length === 1) return ch.filter((c) => allowed(c.id)).map((c) => <Item key={c.id} c={c} current={current} />);
                       const on = ch.some((c) => c.id === current);
                       const op = Boolean(open[k]);
                       return [

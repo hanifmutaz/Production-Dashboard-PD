@@ -16,7 +16,10 @@ if (legacy) history.replaceState(null, '', `/${legacy}`);
 function ConfigGate() {
   const { me } = useAuth();
   return (
-    <ConfigProvider key={me ? `in-${me.name}` : 'out'} enabled={Boolean(me)}>
+    <ConfigProvider
+      key={me ? JSON.stringify([me.kind, me.name, me.role, me.locations, me.permissions, me.menus, me.line, me.screen]) : 'out'}
+      enabled={Boolean(me)}
+    >
       <App />
     </ConfigProvider>
   );

@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/auth';
 import { fmt } from '../../lib/format';
 import { Icon } from '../../lib/icons';
 import { useConfig } from '../../lib/kpi';
-import { siteName, SITES } from '../../lib/sites';
+import { siteName, SITES, visibleSites } from '../../lib/sites';
 import { useApi } from '../../lib/useApi';
 import { WorkCalendar } from '../WorkCalendar';
 import { Editor, ListTable, type Lookups } from './Fields';
@@ -248,11 +248,13 @@ function LineStatusCard() {
 
 function LocationSelect({ site, set }: { site: string; set: (s: string) => void }) {
   const { me } = useAuth();
+  const visible = visibleSites(me);
+  if (visible.length <= 1) return null;
   return (
     <label>
       Lokasi{' '}
       <select value={site} onChange={(e) => set(e.target.value)}>
-        {SITES.filter((s) => !me?.locations.length || me.locations.includes(s)).map((s) => (
+        {visible.map((s) => (
           <option key={s} value={s}>
             {siteName(s)}
           </option>
@@ -452,23 +454,28 @@ function SourcePreview() {
 }
 
 export function Settings() {
-  const { can } = useAuth();
+  const { can, me } = useAuth();
+  const global = visibleSites(me).length > 1;
   const { raw } = useConfig();
   const [selected, setSection] = useState('kpi');
   const sections = SETTINGS_SECTIONS.filter(([id]) => {
     if (id === 'access') return can('users.manage') || can('devices.manage');
-    if (id === 'audit') return can('audit.view') || can('config.edit');
+    if (id === 'audit') return global && (can('audit.view') || can('config.edit'));
+    if (!global && !['master', 'planning', 'calendar'].includes(id)) return false;
     return can('config.view');
   });
   const section = sections.find(([id]) => id === selected)?.[0] ?? sections[0]?.[0] ?? '';
-  const groups = SETTINGS_GROUPS[section]?.filter(
-    ([id]) => section !== 'access' || can(id === 'devices' ? 'devices.manage' : 'users.manage'),
-  );
+  const groups = SETTINGS_GROUPS[section]?.filter(([id]) => {
+    if (!global && section === 'master') return id === 'lines';
+    if (section !== 'access') return true;
+    if (!global && !['users', 'devices'].includes(id)) return false;
+    return can(id === 'devices' ? 'devices.manage' : 'users.manage');
+  });
   const [group, setGroup] = useState<Record<string, string>>({});
   const lines = useApi<{ line_code: string; series: string; location: string }[]>(
     can('config.view') ? '/api/v3/lines/all' : can('devices.manage') ? '/api/v3/lines' : null,
   );
-  const pendingRegs = useApi<{ pending: number }>(can('users.manage') ? '/api/v3/access/registrations/count' : null);
+  const pendingRegs = useApi<{ pending: number }>(global && can('users.manage') ? '/api/v3/access/registrations/count' : null);
   const pendingCount = pendingRegs.data?.pending ?? 0;
   if (!sections.length) return null;
   const key = groups ? (groups.find(([id]) => id === group[section])?.[0] ?? groups[0]?.[0] ?? section) : section;

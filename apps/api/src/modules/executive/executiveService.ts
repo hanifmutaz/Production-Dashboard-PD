@@ -92,10 +92,10 @@ export class ExecutiveService {
     return summary.output_actual;
   }
 
-  async month(year: number, month: number, scope: readonly string[] = []) {
+  async month(year: number, month: number, scope: readonly string[] = TEMPAT_LIST) {
     const today = toWib(this.now());
     const locations: LocationAchievement[] = [];
-    for (const tempat of TEMPAT_LIST.filter((t) => !scope.length || scope.includes(t))) {
+    for (const tempat of TEMPAT_LIST.filter((t) => scope.includes(t))) {
       const ym = year + '-' + pad2(month);
       const status = await this.reporting.statusOfSite(tempat, ym + '-01', ym + '-' + pad2(daysInMonth(year, month)));
       const reporting = await this.reporting.forSite(tempat);
@@ -161,9 +161,10 @@ export class ExecutiveService {
   }
 
   /** Kumulatif target vs actual per bulan sepanjang tahun. */
-  async trend(year: number, tempat?: Tempat, scope: readonly string[] = []) {
-    const statuses = new Map(await Promise.all(TEMPAT_LIST.map(async (t) => [t, await this.reporting.statusOfSite(t)] as const)));
-    const targets = tempat ? [tempat] : TEMPAT_LIST.filter((t) => (!scope.length || scope.includes(t)) && statuses.get(t) === 'ok');
+  async trend(year: number, tempat?: Tempat, scope: readonly string[] = TEMPAT_LIST) {
+    const visible = TEMPAT_LIST.filter((t) => scope.includes(t));
+    const statuses = new Map(await Promise.all(visible.map(async (t) => [t, await this.reporting.statusOfSite(t)] as const)));
+    const targets = tempat ? visible.filter((t) => t === tempat) : visible.filter((t) => statuses.get(t) === 'ok');
     const months = [];
     let cumTarget = 0;
     let cumActual = 0;

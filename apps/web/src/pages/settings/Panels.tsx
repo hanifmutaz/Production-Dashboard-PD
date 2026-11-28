@@ -6,7 +6,7 @@ import { dayList, lastOfMonth } from '../../lib/dates';
 import { fmt } from '../../lib/format';
 import { Icon } from '../../lib/icons';
 import { useConfig } from '../../lib/kpi';
-import { siteName, SITES } from '../../lib/sites';
+import { siteName, SITES, visibleSites } from '../../lib/sites';
 import { useApi, type ApiState } from '../../lib/useApi';
 import { Editor, ListTable, type Lookups } from './Fields';
 import { MENU_OPTIONS, SPEC, type Field } from './spec';
@@ -45,9 +45,12 @@ interface LineRec {
 
 export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; readonly onChange: () => void }) {
   const lines = useApi<LineRec[]>('/api/v3/lines/all');
-  const canEdit = useAuth().can('config.edit');
-  const disc = useApi<string[]>(canEdit ? '/api/v3/lines/discover' : null);
-  const eff = useApi<{ line_discovery: { shift_scheme: number; location: string } }>('/api/v3/settings/effective');
+  const { me, can } = useAuth();
+  const visible = visibleSites(me);
+  const global = visible.length > 1;
+  const canEdit = can('config.edit');
+  const disc = useApi<string[]>(canEdit && global ? '/api/v3/lines/discover' : null);
+  const eff = useApi<{ line_discovery: { shift_scheme: number; location: string } }>(global ? '/api/v3/settings/effective' : null);
   const save = useSaveSetting();
   const [editing, setEditing] = useState<string | null>(null);
   const [msg, setMsg] = useState<[string, boolean]>(['', false]);
@@ -56,7 +59,7 @@ export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; r
     await api.put(`/api/v3/lines/${encodeURIComponent(code)}`, {
       description: String(v['name'] ?? ''),
       shift_scheme: Number(v['scheme'] ?? 2),
-      tempat: String(v['site'] ?? 'internal'),
+      tempat: String(v['site'] ?? visible[0] ?? 'internal'),
       active: v['active'] !== false,
       product: String(v['product'] ?? ''),
       external_code: String(v['external'] ?? ''),
@@ -94,7 +97,7 @@ export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; r
                   cycle: rec.cycle_time ?? '',
                   scheme: String(rec.shift_scheme),
                 }
-              : { site: 'internal', scheme: '2' }
+              : { site: visible[0] ?? 'internal', scheme: '2' }
           }
           onCancel={() => setEditing(null)}
           onSave={async (v) => {
@@ -142,7 +145,7 @@ export function LinesPanel({ lookups, onChange }: { readonly lookups: Lookups; r
             .catch((e: unknown) => setMsg([errText(e), true]));
         }}
       />
-      {canEdit && (
+      {canEdit && global && (
         <section className="settings-card">
           <header>
             <div>
@@ -230,10 +233,12 @@ function MonthTargets({
   readonly period: string;
   readonly changePeriod: (month: string) => void;
 }) {
-  const canEdit = useAuth().can('config.edit');
+  const { me, can } = useAuth();
+  const canEdit = can('config.edit');
+  const visible = visibleSites(me);
   const [year, month] = period.split('-').map(Number);
   const { sites } = useConfig();
-  const [site, setSite] = useState(useAuth().me?.locations[0] ?? 'internal');
+  const [site, setSite] = useState<string>(visible[0] ?? 'internal');
   const query = `year=${year}&month=${month}`;
   const plan = useApi<Plan>(`/api/v3/planning?${query}`);
   const calendar = useApi<{ holidays: string[] }>(`/api/v3/executive/calendar?tempat=${site}&${query}`);
@@ -372,7 +377,7 @@ function MonthTargets({
               </tr>
             </thead>
             <tbody>
-              {SITES.map((site) => (
+              {visible.map((site) => (
                 <tr key={site}>
                   <th scope="row">{siteName(site)}</th>
                   <td>
@@ -388,18 +393,18 @@ function MonthTargets({
       <section className="settings-card settings-list">
         <header>
           <h3>Target per line</h3>
-          <select
+          {visible.length > 1 && (<select
             aria-label="Lokasi target line"
             value={site}
             disabled={busy || pending.length > 0}
             onChange={(e) => setSite(e.target.value)}
           >
-            {SITES.filter((s) => sites[s]).map((s) => (
+            {visible.filter((s) => sites[s]).map((s) => (
               <option key={s} value={s}>
                 {siteName(s)}
               </option>
             ))}
-          </select>
+          </select>)}
           {canEdit && (
             <button type="button" className="btn" disabled={!ready || busy || !pending.length} onClick={() => void save()}>
               {busy ? 'Menyimpan…' : `Simpan perubahan${pending.length ? ` (${pending.length})` : ''}`}
@@ -515,9 +520,10 @@ export function RegistrationsPanel({ onChange }: { readonly onChange?: () => voi
     setBusy(rec.id);
     try {
       if (kind === 'approve') {
+        if (!f.get('site')) throw new Error('Pilih cakupan lokasi terlebih dahulu.');
         await api.post(`/api/v3/access/registrations/${rec.id}/approve`, {
           role: String(f.get('role') ?? 'viewer'),
-          locations: f.get('site') ? [String(f.get('site'))] : [],
+          locations: f.get('site') === 'all' ? [...SITES] : [String(f.get('site'))],
           version: rec.version,
         });
         setMsg([`${rec.email} disetujui. Akun sudah bisa dipakai login.`, false]);
@@ -579,7 +585,8 @@ export function RegistrationsPanel({ onChange }: { readonly onChange?: () => voi
               <div className="setting-field">
                 <label htmlFor={`reg-site-${rec.id}`}>Cakupan lokasi</label>
                 <select id={`reg-site-${rec.id}`} name="site" defaultValue="">
-                  <option value="">Semua lokasi</option>
+                  <option value="">Pilih cakupan lokasi</option>
+                  <option value="all">Hirose · Semua lokasi</option>
                   {SITES.map((s) => (
                     <option key={s} value={s}>
                       {siteName(s)}
@@ -618,6 +625,7 @@ export function RegistrationsPanel({ onChange }: { readonly onChange?: () => voi
 }
 
 export function UsersPanel() {
+  const visible = visibleSites(useAuth().me);
   const users = useApi<UserRec[]>('/api/v3/access/users');
   const roles = useApi<RoleRec[]>('/api/v3/access/roles');
   const [editing, setEditing] = useState<string | null>(null);
@@ -641,15 +649,17 @@ export function UsersPanel() {
           lookups={{ lines: [], products: [], roles: roleOpts }}
           record={
             rec
-              ? { id: rec.id, email: rec.email ?? '', name: rec.display_name, role: rec.role, site: locList(rec.locations)[0] ?? '' }
-              : { role: 'viewer' }
+              ? { id: rec.id, email: rec.email ?? '', name: rec.display_name, role: rec.role, site: locList(rec.locations).length === 3 ? 'all' : locList(rec.locations)[0] ?? '' }
+              : { role: 'viewer', site: visible.length === 1 ? visible[0] : '' }
           }
           onCancel={() => setEditing(null)}
           onSave={async (v) => {
             const pw = String(v['password'] ?? '');
             if (!rec && pw.length < 10) throw new Error('Password minimal 10 karakter.');
             if (rec && pw && pw.length < 10) throw new Error('Password minimal 10 karakter.');
-            const locations = v['site'] ? [String(v['site'])] : [];
+            const selected = visible.length === 1 ? visible[0] : String(v['site'] ?? '');
+            const locations = selected === 'all' ? [...SITES] : selected ? [selected] : [];
+            if (!locations.length) throw new Error('Pilih cakupan lokasi terlebih dahulu.');
             try {
               if (rec) {
                 await api.patch(`/api/v3/access/users/${rec.id}`, {
@@ -687,7 +697,7 @@ export function UsersPanel() {
           detail: [
             u.email ?? 'Email belum diisi',
             roles.data?.find((r) => r.code === u.role)?.name ?? u.role,
-            locList(u.locations).map(siteName).join(', ') || 'Semua lokasi',
+            locList(u.locations).map(siteName).join(', ') || 'Belum ditetapkan',
           ],
         }))}
         onNew={() => setEditing('new')}
@@ -1009,6 +1019,7 @@ interface Devices {
 }
 
 export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
+  const global = visibleSites(useAuth().me).length > 1;
   const [screen, setScreen] = useState<DeviceScreen>('line');
   const dev = useApi<Devices>('/api/v3/access/devices');
   const [code, setCode] = useState<{ code: string; expiresAt: string } | null>(null);
@@ -1036,7 +1047,7 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
     const f = new FormData(e.currentTarget);
     api
       .post<{ code: string; expiresAt: string }>('/api/v3/access/devices/pairing-codes', {
-        location: 'internal',
+        ...(screen === 'line' ? {} : { location: 'internal' }),
         screen,
         line_code: screen === 'line' ? String(f.get('line') ?? '') || undefined : undefined,
         name: String(f.get('name') ?? '').trim(),
@@ -1048,7 +1059,7 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
     <>
       <Feedback msg={msg[0]} error={msg[1]} />
       <section className="card">
-        <h2>Daftarkan iPad atau TV Departemen</h2>
+        <h2>{global ? 'Daftarkan iPad atau TV Departemen' : 'Daftarkan iPad'}</h2>
         <p className="sb">Masukkan kode sekali pakai di layar login perangkat melalui tombol Hubungkan perangkat.</p>
         <form id="device-form" onSubmit={submit}>
           <label className="fld">
@@ -1064,7 +1075,7 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
                 setCode(null);
               }}
             >
-              {Object.entries(deviceScreens).map(([key, label]) => (
+              {Object.entries(deviceScreens).filter(([key]) => global || key === 'line').map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}
                 </option>
@@ -1073,11 +1084,11 @@ export function DevicesPanel({ lines }: { readonly lines: readonly string[] }) {
           </label>
           {screen === 'line' && (
             <label className="fld">
-              Lokasi / Line
+              Line
               <select name="line" required>
                 {lines.map((l) => (
                   <option key={l} value={l}>
-                    {siteName('internal')} · {l}
+                    {l}
                   </option>
                 ))}
               </select>

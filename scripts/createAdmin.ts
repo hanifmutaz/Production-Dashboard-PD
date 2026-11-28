@@ -14,13 +14,22 @@ async function main(): Promise<void> {
   await client.connect();
   try {
     const hash = await AuthService.hashPassword(password);
-    const { rowCount } = await client.query(
+    await client.query('BEGIN');
+    const { rowCount, rows } = await client.query(
       `INSERT INTO users (email, display_name, password_hash, role_id, username)
-       SELECT $1, $1, $2, id, $3 FROM roles WHERE code = 'admin' ON CONFLICT (email) DO NOTHING`,
+       SELECT $1, $1, $2, id, $3 FROM roles WHERE code = 'admin' ON CONFLICT (email) DO NOTHING RETURNING id`,
       [email, hash, randomUUID()],
     );
-    await client.query(`INSERT INTO audit_log (actor_type, action, target) VALUES ('system', 'user.create_admin', $1)`, [email]);
+    if (rows[0]) {
+      for (const site of ['internal', 'sgp', 'systech'])
+        await client.query('INSERT INTO user_site_scope (user_id, location) VALUES ($1, $2)', [rows[0]['id'], site]);
+      await client.query(`INSERT INTO audit_log (actor_type, action, target) VALUES ('system', 'user.create_admin', $1)`, [email]);
+    }
+    await client.query('COMMIT');
     console.log(rowCount ? `Admin ${email} dibuat.` : `User ${email} sudah ada — tidak diubah.`);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
   } finally {
     await client.end();
   }

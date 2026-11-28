@@ -37,6 +37,9 @@ async function main(): Promise<void> {
   dashDb.public.none(
     `INSERT INTO users (username, email, display_name, password_hash, role_id) SELECT 'admin', 'admin@example.test', 'Admin', '${hash}', id FROM roles WHERE code = 'admin'`,
   );
+  for (const site of ['internal', 'sgp', 'systech']) {
+    dashDb.public.none(`INSERT INTO user_site_scope (user_id, location) SELECT id, '${site}' FROM users WHERE email = 'admin@example.test'`);
+  }
   const ym = formatIsoDate(now).slice(0, 7).split('-').map(Number);
   dashDb.public.none(`INSERT INTO targets (location, year, month, target) VALUES ('internal', ${ym[0]}, ${ym[1]}, 60000)`);
   dashDb.public.none(

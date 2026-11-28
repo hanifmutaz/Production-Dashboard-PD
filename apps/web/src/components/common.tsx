@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { AchievementLegend, achievementBand, achievementLabel, type BandClass } from '../lib/achievement';
 import { fmt, P } from '../lib/format';
 import { achievedMetric, useConfig } from '../lib/kpi';
-import { SITES, siteName } from '../lib/sites';
+import { visibleSites, siteName } from '../lib/sites';
+import { useAuth } from '../lib/auth';
 
 export function PageLead({ note, children }: { readonly note: string; readonly children?: ReactNode }) {
   return (
@@ -179,9 +180,11 @@ export function LocTabs({
   readonly counts: Readonly<Record<string, SiteCount | null>>;
 }) {
   const { sites } = useConfig();
+  const visible = visibleSites(useAuth().me);
+  if (visible.length <= 1) return null;
   return (
     <div className="tabs" role="navigation" aria-label="Lokasi">
-      {SITES.map((x) => {
+      {visible.map((x) => {
         const c = counts[x];
         return (
           <a key={x} className="lt" href={`#${prefix}${x}`} {...(x === current ? { 'aria-current': 'page' as const } : {})}>

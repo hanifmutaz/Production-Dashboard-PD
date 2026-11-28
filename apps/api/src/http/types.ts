@@ -30,7 +30,7 @@ export interface Principal {
   readonly name: string;
   readonly roleCode: string;
   readonly permissions: ReadonlySet<Permission>;
-  /** Lokasi yang boleh dilihat. Kosong = semua lokasi. */
+  /** Lokasi eksplisit yang boleh dilihat. Kosong = tidak ada akses. */
   readonly locations: readonly string[];
   /** Menu yang boleh dibuka (Custom Role). Kosong = semua menu (role bawaan). */
   readonly menus?: readonly string[];

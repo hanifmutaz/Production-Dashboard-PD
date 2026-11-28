@@ -102,6 +102,11 @@ export function authRoutes(auth: AuthService, pool: DbPool, opts: { cookieSecure
         );
         const code = rows[0];
         if (!code) throw new AppError(422, 'PAIRING_INVALID', 'Kode pairing tidak valid, sudah dipakai, atau kedaluwarsa');
+        if (!code['location']) throw new AppError(422, 'PAIRING_INVALID', 'Buat ulang kode dengan lokasi eksplisit');
+        if (code['line_code']) {
+          const line = (await tx.query('SELECT location FROM lines WHERE line_code = $1 FOR SHARE', [code['line_code']])).rows[0];
+          if (!line || line['location'] !== code['location']) throw new AppError(422, 'PAIRING_INVALID', 'Lokasi line berubah; buat ulang kode');
+        }
         const created = await tx.query(
           `INSERT INTO devices (name, token_hash, location, line_code, screen) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, location, line_code, screen`,
           // Nama dari admin saat membuat kode lebih diutamakan daripada nama yang dikirim perangkat.

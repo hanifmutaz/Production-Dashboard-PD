@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { hasAllLocations } from '@v3/shared';
 import { Router } from 'express';
 import { z } from 'zod';
-import { principalOf, requirePermission } from '../../http/auth.js';
+import { canSeeLocation, principalOf, requireCentralScope, requirePermission } from '../../http/auth.js';
 import { badRequest, conflict, forbidden, notFound, parseInput } from '../../http/errors.js';
-import { ALL_PERMISSIONS, type Permission } from '../../http/types.js';
-import { tempat, versionField } from '../../http/schemas.js';
-import { withTransaction, type DbPool } from '../../db/pool.js';
+import { ALL_PERMISSIONS, type Permission, type Principal } from '../../http/types.js';
+import { locationScope, tempat, versionField } from '../../http/schemas.js';
+import { withTransaction, type DbPool, type Queryable } from '../../db/pool.js';
 import { isUniqueViolation } from '../../db/optimistic.js';
 import { listAudit, recordAudit } from '../audit/auditService.js';
 import { AuthService } from '../auth/authService.js';
@@ -15,19 +16,41 @@ const permission = z.enum(ALL_PERMISSIONS as [Permission, ...Permission[]]);
 const menu = z.string().regex(/^[a-z0-9_-]{1,40}$/);
 const password = z.string().min(10, 'password minimal 10 karakter').max(200);
 
+/** Admin lokasi tunggal hanya boleh mengelola akun dengan scope yang sama. */
+function canManageScope(actor: Principal, scope: readonly string[]): boolean {
+  return hasAllLocations(actor.locations) || (scope.length === 1 && actor.locations.includes(scope[0] ?? ''));
+}
+
+/** Definisi custom role tetap dikelola Hirose; admin lokal hanya dapat menetapkan role bawaan yang tidak lebih tinggi. */
+async function assertAssignableRole(db: Queryable, actor: Principal, roleId: unknown): Promise<void> {
+  if (hasAllLocations(actor.locations)) return;
+  const role = (await db.query('SELECT is_builtin FROM roles WHERE id = $1', [roleId])).rows[0];
+  const perms = await db.query('SELECT permission FROM role_permissions WHERE role_id = $1', [roleId]);
+  if (role?.['is_builtin'] !== true || perms.rows.some((p) => !actor.permissions.has(String(p['permission']) as Permission)))
+    throw forbidden('Role di luar cakupan admin lokasi');
+}
+
 export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Router {
   const r = Router();
   const manageUsers = requirePermission('users.manage');
   const manageDevices = requirePermission('devices.manage');
 
   // ---- Roles (bawaan + Custom Role) ----
-  r.get('/roles', manageUsers, async (_req, res, next) => {
+  r.get('/roles', manageUsers, async (req, res, next) => {
     try {
       const { rows } = await pool.query(`SELECT id, code, name, is_builtin, version FROM roles ORDER BY id`);
       const perms = await pool.query(`SELECT role_id, permission FROM role_permissions`);
       const menus = await pool.query(`SELECT role_id, menu FROM role_menus`);
+      const actor = principalOf(req);
+      const visible = hasAllLocations(actor.locations)
+        ? rows
+        : rows.filter(
+            (role) =>
+              role['is_builtin'] === true &&
+              perms.rows.filter((p) => p['role_id'] === role['id']).every((p) => actor.permissions.has(String(p['permission']) as Permission)),
+          );
       res.json({
-        data: rows.map((role) => ({
+        data: visible.map((role) => ({
           ...role,
           permissions: perms.rows.filter((p) => p['role_id'] === role['id']).map((p) => p['permission']),
           menus: menus.rows.filter((m) => m['role_id'] === role['id']).map((m) => m['menu']),
@@ -39,7 +62,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     }
   });
 
-  r.put('/roles/:code', manageUsers, async (req, res, next) => {
+  r.put('/roles/:code', manageUsers, requireCentralScope, async (req, res, next) => {
     try {
       const code = parseInput(z.string().regex(/^[a-z0-9_-]{2,40}$/), req.params['code']);
       const b = parseInput(
@@ -84,7 +107,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     }
   });
 
-  r.delete('/roles/:code', manageUsers, async (req, res, next) => {
+  r.delete('/roles/:code', manageUsers, requireCentralScope, async (req, res, next) => {
     try {
       const code = parseInput(z.string().regex(/^[a-z0-9_-]{2,40}$/), req.params['code']);
       await withTransaction(pool, async (tx) => {
@@ -103,7 +126,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
   });
 
   // ---- Users ----
-  r.get('/users', manageUsers, async (_req, res, next) => {
+  r.get('/users', manageUsers, async (req, res, next) => {
     try {
       // Tanpa array_agg agar portabel (pg-mem & Postgres); cakupan lokasi digabung di aplikasi.
       const { rows } = await pool.query(
@@ -112,7 +135,9 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
       const scope = await pool.query(`SELECT user_id, location FROM user_site_scope ORDER BY location`);
       const byUser = new Map<number, string[]>();
       for (const s of scope.rows) byUser.set(Number(s['user_id']), [...(byUser.get(Number(s['user_id'])) ?? []), String(s['location'])]);
-      res.json({ data: rows.map((u) => ({ ...u, locations: byUser.get(Number(u['id'])) ?? [] })), status: 'ok' });
+      const actor = principalOf(req);
+      const users = rows.map((u) => ({ ...u, locations: byUser.get(Number(u['id'])) ?? [] }));
+      res.json({ data: users.filter((u) => canManageScope(actor, u.locations)), status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -126,14 +151,17 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           display_name: z.string().min(1).max(80),
           password,
           role: z.string(),
-          locations: z.array(tempat).max(3).default([]),
+          locations: locationScope,
         }),
         req.body,
       );
+      const actor = principalOf(req);
+      if (!canManageScope(actor, b.locations)) throw forbidden();
       const hash = await AuthService.hashPassword(b.password);
       const user = await withTransaction(pool, async (tx) => {
         const role = (await tx.query(`SELECT id FROM roles WHERE code = $1`, [b.role])).rows[0];
         if (!role) throw badRequest('Role tidak dikenal');
+        await assertAssignableRole(tx, actor, role['id']);
         const ins = await tx
           .query(`INSERT INTO users (email, display_name, password_hash, role_id, username) VALUES ($1, $2, $3, $4, $5) RETURNING id`, [
             b.email,
@@ -167,17 +195,26 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           active: z.boolean().optional(),
           email: z.string().trim().toLowerCase().max(254).email().optional(),
           password: password.optional(),
-          locations: z.array(tempat).max(3).optional(),
+          locations: locationScope.optional(),
           version: z.number().int().positive(),
         }),
         req.body,
       );
       if (req.principal?.kind === 'user' && req.principal.id === id && b.active === false)
         throw badRequest('Tidak bisa menonaktifkan akun sendiri');
+      const actor = principalOf(req);
+      if (b.locations && !canManageScope(actor, b.locations)) throw forbidden();
       const hash = b.password ? await AuthService.hashPassword(b.password) : null;
       await withTransaction(pool, async (tx) => {
+        if (!hasAllLocations(actor.locations)) {
+          const target = (await tx.query('SELECT role_id FROM users WHERE id = $1 FOR UPDATE', [id])).rows[0];
+          const scope = await tx.query('SELECT location FROM user_site_scope WHERE user_id = $1', [id]);
+          if (!target || !canManageScope(actor, scope.rows.map((s) => String(s['location'])))) throw forbidden();
+          await assertAssignableRole(tx, actor, target['role_id']);
+        }
         const roleId = b.role ? (await tx.query(`SELECT id FROM roles WHERE code = $1`, [b.role])).rows[0]?.['id'] : null;
         if (b.role && !roleId) throw badRequest('Role tidak dikenal');
+        if (roleId) await assertAssignableRole(tx, actor, roleId);
         const upd = await tx.query(
           `UPDATE users SET email = COALESCE($7, email), display_name = COALESCE($2, display_name), role_id = COALESCE($3, role_id), active = COALESCE($4, active),
              password_hash = COALESCE($5, password_hash), failed_attempts = CASE WHEN $5::text IS NULL THEN failed_attempts ELSE 0 END,
@@ -191,7 +228,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           for (const l of new Set(b.locations)) await tx.query(`INSERT INTO user_site_scope (user_id, location) VALUES ($1, $2)`, [id, l]);
         }
         // Sesi lama dicabut saat password/role/status berubah.
-        if (hash || b.email || b.role || b.active === false) await tx.query(`DELETE FROM sessions WHERE user_id = $1`, [id]);
+        if (hash || b.email || b.role || b.locations || b.active === false) await tx.query(`DELETE FROM sessions WHERE user_id = $1`, [id]);
         await recordAudit(tx, req, {
           action: 'user.update',
           target: String(id),
@@ -205,7 +242,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
   });
 
   // ---- Pendaftaran mandiri: antrean approval ----
-  r.get('/registrations', manageUsers, async (req, res, next) => {
+  r.get('/registrations', manageUsers, requireCentralScope, async (req, res, next) => {
     try {
       const q = parseInput(z.object({ status: z.enum(['pending', 'rejected']).default('pending') }), req.query);
       const { rows } = await pool.query(
@@ -219,7 +256,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     }
   });
 
-  r.get('/registrations/count', manageUsers, async (_req, res, next) => {
+  r.get('/registrations/count', manageUsers, requireCentralScope, async (_req, res, next) => {
     try {
       const { rows } = await pool.query(`SELECT count(*) AS n FROM users WHERE status = 'pending'`);
       res.json({ data: { pending: Number(rows[0]?.['n'] ?? 0) }, status: 'ok' });
@@ -230,11 +267,11 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
 
   const STALE_REGISTRATION = 'Pendaftaran sudah diproses atau berubah. Muat ulang lalu coba lagi.';
 
-  r.post('/registrations/:id/approve', manageUsers, async (req, res, next) => {
+  r.post('/registrations/:id/approve', manageUsers, requireCentralScope, async (req, res, next) => {
     try {
       const id = parseInput(z.coerce.number().int().positive(), req.params['id']);
       const b = parseInput(
-        z.object({ role: z.string().min(1), locations: z.array(tempat).max(3).default([]), version: z.number().int().positive() }),
+        z.object({ role: z.string().min(1), locations: locationScope, version: z.number().int().positive() }),
         req.body,
       );
       const email = await withTransaction(pool, async (tx) => {
@@ -262,7 +299,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     }
   });
 
-  r.post('/registrations/:id/reject', manageUsers, async (req, res, next) => {
+  r.post('/registrations/:id/reject', manageUsers, requireCentralScope, async (req, res, next) => {
     try {
       const id = parseInput(z.coerce.number().int().positive(), req.params['id']);
       const b = parseInput(z.object({ note: z.string().trim().max(300).optional(), version: z.number().int().positive() }), req.body);
@@ -283,7 +320,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
   });
 
   // ---- Devices (iPad kiosk) ----
-  r.get('/devices', manageDevices, async (_req, res, next) => {
+  r.get('/devices', manageDevices, async (req, res, next) => {
     try {
       const { rows } = await pool.query(
         `SELECT id, name, location, line_code, screen, created_at, last_seen_at, revoked_at FROM devices ORDER BY id DESC`,
@@ -291,7 +328,10 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
       const codes = await pool.query(
         `SELECT id, location, line_code, screen, device_name, created_at, expires_at FROM device_pairing_codes WHERE consumed_at IS NULL AND expires_at > now() ORDER BY id DESC`,
       );
-      res.json({ data: { devices: rows, pending: codes.rows }, status: 'ok' });
+      const actor = principalOf(req);
+      const visible = (row: Record<string, unknown>): boolean =>
+        hasAllLocations(actor.locations) || canSeeLocation(actor.locations, String(row['location']));
+      res.json({ data: { devices: rows.filter(visible), pending: codes.rows.filter(visible) }, status: 'ok' });
     } catch (e) {
       next(e);
     }
@@ -316,14 +356,23 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
           ),
         req.body ?? {},
       );
+      const actor = principalOf(req);
+      if (b.screen !== 'line' && !hasAllLocations(actor.locations)) throw forbidden();
       const code = newPairingCode();
       const expiresAt = new Date(Date.now() + opts.pairingTtlMin * 60_000);
       await withTransaction(pool, async (tx) => {
+        let location = b.location ?? (actor.locations.length === 1 ? actor.locations[0] : 'internal') ?? 'internal';
+        if (b.line_code) {
+          const line = (await tx.query('SELECT location FROM lines WHERE line_code = $1 FOR SHARE', [b.line_code])).rows[0];
+          if (!line || (b.location && b.location !== line['location'])) throw badRequest('Lokasi dan line tidak cocok');
+          location = String(line['location']);
+        }
+        if (!canSeeLocation(actor.locations, location)) throw forbidden();
         await tx.query(
           `INSERT INTO device_pairing_codes (code_hash, location, line_code, device_name, created_by, expires_at, screen) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             hashToken(code),
-            b.location ?? (b.screen === 'line' ? null : 'internal'),
+            location,
             b.line_code ?? null,
             b.name ?? null,
             principalOf(req).id,
@@ -333,7 +382,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
         );
         await recordAudit(tx, req, {
           action: 'device.pairing_code.create',
-          detail: { screen: b.screen, location: b.location ?? null, line: b.line_code ?? null, expiresAt },
+          detail: { screen: b.screen, location, line: b.line_code ?? null, expiresAt },
         });
       });
       res.status(201).json({ data: { code, expiresAt }, status: 'ok' });
@@ -346,6 +395,9 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     try {
       const id = parseInput(z.coerce.number().int().positive(), req.params['id']);
       await withTransaction(pool, async (tx) => {
+        const actor = principalOf(req);
+        const device = (await tx.query('SELECT location FROM devices WHERE id = $1 FOR UPDATE', [id])).rows[0];
+        if (!device || (!hasAllLocations(actor.locations) && !canSeeLocation(actor.locations, String(device['location'])))) throw forbidden();
         const upd = await tx.query(`UPDATE devices SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL RETURNING id`, [id]);
         if (!upd.rows[0]) throw notFound('Perangkat tidak ada atau sudah dicabut');
         await recordAudit(tx, req, { action: 'device.revoke', target: String(id) });
@@ -356,7 +408,7 @@ export function accessRoutes(pool: DbPool, opts: { pairingTtlMin: number }): Rou
     }
   });
 
-  r.get('/audit', requirePermission('audit.view'), async (req, res, next) => {
+  r.get('/audit', requirePermission('audit.view'), requireCentralScope, async (req, res, next) => {
     try {
       const q = parseInput(
         z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), before: z.coerce.number().int().positive().optional() }),

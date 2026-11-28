@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Shell } from './shell/Shell';
 import { useAuth } from './lib/auth';
 import { useConfig } from './lib/kpi';
-import { useRoute, type Route } from './lib/router';
+import { parseRoute, useRoute, type Route } from './lib/router';
+import { visibleSites } from './lib/sites';
 import { Executive } from './pages/Executive';
 import { Export } from './pages/Export';
 import { Hub } from './pages/Hub';
@@ -74,6 +75,11 @@ export function App() {
   let route = parsed;
   const home = String((raw.get('config.display')?.value as { home?: string } | undefined)?.home ?? 'executive');
   if (!location.hash && ['hub', 'monitoring-output'].includes(home)) route = { page: home as 'hub' };
+  const visible = visibleSites(me);
+  const own = visible.length === 1 ? visible[0] : undefined;
+  if (own && (route.page === 'master' || route.page === 'stoptime' || route.page === 'monitoring-output')) {
+    route = { page: route.page, site: own };
+  }
   // Perangkat kiosk hanya melihat line miliknya (port allowedRoute + pairedDevice).
   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) {
     return (
@@ -87,7 +93,11 @@ export function App() {
   if (me.kind === 'device') route = { page: 'line', line: me.line ?? '' };
   else if (!allowed(routeKey(route))) {
     // Urutan menu mengikuti daftar menu mockup (bukan urutan abjad dari server).
-    const order = MENU_OPTIONS.map(([k]) => k);
+    const order = MENU_OPTIONS.flatMap(([k]) =>
+      k === 'master' || k === 'stoptime' || (k === 'monitoring-output' && own)
+        ? visible.map((site) => `${k}-${site}`)
+        : [k],
+    );
     const first = order.find((key) => key !== 'line' && allowed(key));
     if (!first)
       return (
@@ -98,12 +108,7 @@ export function App() {
           </button>
         </main>
       );
-    route =
-      first === 'master' || first === 'stoptime'
-        ? { page: first, site: 'internal' }
-        : ['executive', 'hub', 'monitoring-output', 'lines', 'export', 'settings'].includes(first)
-          ? { page: first as 'hub' }
-          : { page: 'executive' };
+    route = parseRoute(first);
   }
 
   let page;

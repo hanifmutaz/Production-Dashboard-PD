@@ -239,7 +239,8 @@ export function Executive() {
     );
   }
 
-  const rows = toRows(data);
+  const rows = toRows(data).filter((r) => me?.locations.includes(r.key));
+  const multi = (me?.locations.length ?? 0) > 1;
   const comparable = rows.filter((r) => r.actual !== null && r.monthly !== null);
   const monthlyPct = ratio(
     sumOf(comparable, (r) => r.actual),
@@ -284,10 +285,10 @@ export function Executive() {
   const biggest = rows
     .filter((r) => (r.runningGap ?? 0) < 0)
     .reduce<Row | null>((w, r) => (!w || (r.runningGap ?? 0) < (w.runningGap ?? 0) ? r : w), null);
-  const dailyDate =
-    rows.find((r) => r.key === 'internal')?.dailyActual !== null
-      ? data.locations.find((l) => l.tempat === 'internal')?.daily?.date
-      : undefined;
+  const dailyRow = rows.find((r) => r.key === (multi ? 'internal' : rows[0]?.key));
+  const dailyDate = dailyRow && dailyRow.dailyActual !== null
+    ? data.locations.find((l) => l.tempat === dailyRow.key)?.daily?.date
+    : undefined;
   const columns = ['Lokasi', 'Actual Harian', 'Actual Kumulatif', 'Target Bulanan', 'Target Kumulatif', 'Pencapaian Actual'];
   const band = achievementBand(monthlyPct);
 
@@ -295,9 +296,9 @@ export function Executive() {
     <div className="page">
       <div className="exec-board">
         {head}
-        <section className="exec-summary" aria-label="Ringkasan seluruh lokasi">
+        <section className="exec-summary" aria-label={multi ? 'Ringkasan seluruh lokasi' : 'Ringkasan produksi'}>
           <div className="exec-spotlight">
-            <h2>Total Achievement</h2>
+            <h2>{multi ? 'Total Achievement' : 'Production Achievement'}</h2>
             <div className="exec-status metric-inline">
               <strong className="exec-spotlight-value">{pct(monthlyPct)}</strong>{' '}
               <AchievementCaption band={band} label={achievementLabel(monthlyPct)} />
@@ -325,12 +326,12 @@ export function Executive() {
         <section className="exec-panel" aria-labelledby="exec-locations">
           <div className="exec-panel-head">
             <div>
-              <h2 id="exec-locations">Achievement Ranking</h2>
+              <h2 id="exec-locations">{multi ? 'Achievement Ranking' : 'Pencapaian Produksi'}</h2>
               <p className="exec-date-note">
                 {dailyDate ? `Actual harian · ${fd(dailyDate)}` : 'Actual harian belum tersedia untuk periode ini.'}
               </p>
             </div>
-            {biggest ? (
+            {multi && biggest ? (
               <div className="exec-attention">
                 <span>Gap kumulatif terbesar</span>
                 <p>

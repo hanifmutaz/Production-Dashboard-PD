@@ -164,7 +164,7 @@ export const SPEC: Readonly<Record<string, readonly Field[]>> = {
     ['email', 'Email', 'email'],
     ['name', 'Nama akun', 'text'],
     ['role', 'Role', 'enum', false, []],
-    ['site', 'Cakupan lokasi (kosong = semua)', 'site', true],
+    ['site', 'Cakupan lokasi', 'site'],
     ['password', 'Password (min. 10 karakter)', 'password', true],
   ],
   display: [

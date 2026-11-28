@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError } from './api';
+import { validLocationScope } from '@v3/shared';
 
 export interface Me {
   readonly kind: 'user' | 'device';
@@ -19,12 +20,14 @@ export interface Me {
 }
 
 export function allowedRoute(me: Me | null, r: string): boolean {
-  if (!me) return false;
+  if (!me || !validLocationScope(me.locations)) return false;
+  const site = /^(?:master|stoptime|monitoring-output)-(internal|sgp|systech)$/.exec(r)?.[1];
+  if (site && !me.locations.includes(site)) return false;
   if (me.kind === 'device' && (me.screen === 'hub' || me.screen === 'executive')) return r === me.screen;
   if (me.kind === 'device') return r === 'line' || (me.line !== null && r === `line-${me.line.toLowerCase()}`);
   if (
     r === 'settings' &&
-    !['config.view', 'config.edit', 'users.manage', 'devices.manage', 'audit.view'].some((p) => me.permissions.includes(p))
+    !['config.view', 'config.edit', 'users.manage', 'devices.manage', ...(me.locations.length === 3 ? ['audit.view'] : [])].some((p) => me.permissions.includes(p))
   )
     return false;
   if (r === 'export' && !me.permissions.includes('export.run')) return false;

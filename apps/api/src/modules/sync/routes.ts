@@ -7,7 +7,7 @@ import express, { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { AppError, parseInput, unauthorized } from '../../http/errors.js';
-import { requirePermission } from '../../http/auth.js';
+import { canSeeLocation, principalOf, requirePermission } from '../../http/auth.js';
 import type { DbPool } from '../../db/pool.js';
 
 export interface SyncConfig {
@@ -101,13 +101,13 @@ export function syncRoutes(pool: DbPool, cfg: SyncConfig): Router {
     },
   );
 
-  r.get('/status', requirePermission('dashboard.view'), async (_req, res, next) => {
+  r.get('/status', requirePermission('dashboard.view'), async (req, res, next) => {
     try {
       if (!cfg.enabled) return void res.json({ data: null, status: 'on_hold' });
       const { rows } = await pool.query(`SELECT * FROM push_status ORDER BY source`);
       const now = Date.now();
       res.json({
-        data: rows.map((s) => {
+        data: rows.filter((s) => canSeeLocation(principalOf(req).locations, String(s['source']))).map((s) => {
           const last = s['last_accepted'] ? new Date(String(s['last_accepted'])).getTime() : null;
           return { ...s, stale: last === null || now - last > cfg.staleAfterSec * 1000 };
         }),

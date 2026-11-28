@@ -1,7 +1,8 @@
 // Port settingsField/settingsEditor/settingsRows/settingsList mockup (generik).
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Icon } from '../../lib/icons';
-import { SITES, siteName } from '../../lib/sites';
+import { visibleSites, siteName } from '../../lib/sites';
+import { useAuth } from '../../lib/auth';
 import { validate, SPEC, type Field } from './spec';
 
 export interface Lookups {
@@ -22,6 +23,8 @@ export function SettingField({
   readonly lookups: Lookups;
 }) {
   const [key, label, type, optional, limit, max] = field;
+  const visible = visibleSites(useAuth().me);
+  if (type === 'site' && visible.length === 1) return <input type="hidden" name={key} value={visible[0] ?? ''} />;
   const value = record[key] ?? '';
   const id = `cfg-${key}`;
   let control: ReactNode;
@@ -34,14 +37,14 @@ export function SettingField({
             ? limit
             : []
         : type === 'site'
-          ? SITES.map((s) => [s, siteName(s) + (s === 'internal' ? '' : ' · On Hold')] as const)
+          ? [...(section === 'users' && visible.length > 1 ? [['all', 'Hirose · Semua lokasi'] as const] : []), ...visible.map((s) => [s, siteName(s)] as const)]
           : type === 'product'
             ? lookups.products
             : lookups.lines.map((l) => [l, l] as const);
     const empty =
       section === 'planning' && type === 'line'
         ? 'Seluruh lokasi'
-        : section === 'alerts' || (section === 'users' && type === 'site')
+        : section === 'alerts'
           ? 'Semua lokasi'
           : `Pilih ${label.toLowerCase()}`;
     control = (

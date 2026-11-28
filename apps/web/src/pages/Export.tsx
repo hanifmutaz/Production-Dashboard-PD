@@ -16,7 +16,7 @@ import { useAuth } from '../lib/auth';
 import { presetRange, type Range } from '../lib/dates';
 import { fmt, MON } from '../lib/format';
 import { Icon } from '../lib/icons';
-import { SITES, siteName } from '../lib/sites';
+import { visibleSites, siteName } from '../lib/sites';
 import { useApi } from '../lib/useApi';
 
 interface SavedTemplate {
@@ -38,6 +38,8 @@ const monthLabel = (p: string): string => `${MON[Number(p.slice(5)) - 1] ?? ''} 
 export function Export() {
   const { sites: status } = useConfig();
   const { me } = useAuth();
+  const visible = visibleSites(me);
+  const multi = visible.length > 1;
   const today = me?.today ?? '';
   const [ds, setDs] = useState<ExportDatasetKey>('line_day');
   const [template, setTemplate] = useState('daily');
@@ -60,7 +62,7 @@ export function Export() {
   const saved = useApi<SavedTemplate[]>('/api/v3/export/templates');
 
   const D = EXPORT_DATASETS[ds];
-  const sites = SITES.filter((k) => locs[k] && status[k] === 'ok');
+  const sites = visible.filter((k) => (!multi || locs[k]) && status[k] === 'ok');
   const isExec = ds === 'exec';
   const hasLine = !['exec', 'loc_day'].includes(ds);
   const hasShift = ['line_hour', 'line_shift', 'line_product', 'stop', 'rej'].includes(ds);
@@ -250,8 +252,8 @@ export function Export() {
             </section>
             <section className="card export-filters">
               <h2>Filter laporan</h2>
-              <div className="chips" aria-label="Pilihan lokasi">
-                {SITES.map((k) => (
+              {multi && (<div className="chips" aria-label="Pilihan lokasi">
+                {visible.map((k) => (
                   <button
                     key={k}
                     className="chip b"
@@ -264,7 +266,7 @@ export function Export() {
                     {status[k] === 'on_hold' ? ' · On Hold' : status[k] === 'unavailable' ? ' · Menunggu sinkronisasi' : ''}
                   </button>
                 ))}
-              </div>
+              </div>)}
               <div className="rowf">
                 {isExec ? (
                   <label className="export-month">

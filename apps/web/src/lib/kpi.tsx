@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { useAuth } from './auth';
+import { visibleSites } from './sites';
 import { useApi } from './useApi';
 import type { Thresholds } from './achievement';
 
@@ -30,7 +31,7 @@ export interface Config {
 const Ctx = createContext<Config | null>(null);
 
 export function ConfigProvider({ children, enabled = true }: { readonly children: ReactNode; readonly enabled?: boolean }) {
-  const { can } = useAuth();
+  const { can, me } = useAuth();
   const source = can('config.view') ? '/api/v3/settings' : can('dashboard.view') ? '/api/v3/settings/runtime' : null;
   const res = useApi<SettingRow[]>(enabled ? source : null);
   const sites = useApi<Record<string, string>>(enabled && source ? '/api/v3/sites' : null);
@@ -55,7 +56,10 @@ export function ConfigProvider({ children, enabled = true }: { readonly children
     if (!saved && (theme === 'light' || theme === 'dark')) document.documentElement.dataset['theme'] = theme;
   }, [theme]);
   const value: Config = {
-    sites: sites.data ?? {},
+    sites: Object.fromEntries(visibleSites(me).flatMap((site) => {
+      const status = sites.data?.[site];
+      return status ? [[site, status]] : [];
+    })),
     kpi: { ...DEFAULT_KPI, ...(kpiValue ?? {}) },
     raw,
     name: general?.name || 'Dashboard Produksi',

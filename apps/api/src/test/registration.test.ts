@@ -94,11 +94,11 @@ describe('pendaftaran mandiri + approval admin', () => {
     expect((await admin.patch(`/api/v3/access/users/${id}`, { active: true, version })).status).toBe(409);
     expect(userRow()['active']).toBe(false);
 
-    expect((await admin.post(`/api/v3/access/registrations/${id}/approve`, { role: 'tidak-ada', version })).status).toBe(400);
+    expect((await admin.post(`/api/v3/access/registrations/${id}/approve`, { role: 'tidak-ada', locations: ['internal'], version })).status).toBe(400);
     const ok = await admin.post(`/api/v3/access/registrations/${id}/approve`, { role: 'supervisor', locations: ['internal'], version });
     expect(ok.status).toBe(200);
     // approve ulang dengan version lama → ditolak
-    expect((await admin.post(`/api/v3/access/registrations/${id}/approve`, { role: 'admin', version })).status).toBe(409);
+    expect((await admin.post(`/api/v3/access/registrations/${id}/approve`, { role: 'admin', locations: ['internal'], version })).status).toBe(409);
 
     const me = await loginAs(h, 'calon', PASSWORD);
     const profile = await me.get('/api/v3/auth/me');

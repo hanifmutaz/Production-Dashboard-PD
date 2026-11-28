@@ -1,4 +1,5 @@
 import argon2 from 'argon2';
+import { validLocationScope } from '@v3/shared';
 import type { DbPool, Queryable } from '../../db/pool.js';
 import { withTransaction } from '../../db/pool.js';
 import { AppError, unauthorized } from '../../http/errors.js';
@@ -40,6 +41,8 @@ export async function loadUserPrincipal(db: Queryable, userId: number): Promise<
   if (!u) return null;
   const perms = await db.query(`SELECT permission FROM role_permissions WHERE role_id = $1`, [u['role_id']]);
   const scope = await db.query(`SELECT location FROM user_site_scope WHERE user_id = $1 ORDER BY location`, [userId]);
+  const locations = scope.rows.map((s) => String(s['location']));
+  if (!validLocationScope(locations)) return null;
   const menus = await db.query(`SELECT menu FROM role_menus WHERE role_id = $1 ORDER BY menu`, [u['role_id']]);
   return {
     kind: 'user',
@@ -47,7 +50,7 @@ export async function loadUserPrincipal(db: Queryable, userId: number): Promise<
     name: String(u['display_name']),
     roleCode: String(u['role_code']),
     permissions: toPermissions(perms.rows.map((p) => p['permission'])),
-    locations: scope.rows.map((s) => String(s['location'])),
+    locations,
     menus: menus.rows.map((m) => String(m['menu'])),
   };
 }
@@ -102,6 +105,8 @@ export class AuthService {
       });
       throw unauthorized('Email atau password salah');
     }
+    const principal = await loadUserPrincipal(this.pool, userId);
+    if (!principal) throw unauthorized('Cakupan lokasi akun belum dikonfigurasi. Hubungi admin.');
     const token = newToken();
     const expiresAt = new Date(Date.now() + this.cfg.sessionTtlHours * 3600 * 1000);
     await withTransaction(this.pool, async (tx) => {
@@ -116,8 +121,6 @@ export class AuthService {
         { action: 'auth.login' },
       );
     });
-    const principal = await loadUserPrincipal(this.pool, userId);
-    if (!principal) throw unauthorized();
     return { token, expiresAt, principal };
   }
 
@@ -140,13 +143,20 @@ export class AuthService {
     if (!d) return null;
     const screen = d['screen'];
     if (screen !== 'line' && screen !== 'hub' && screen !== 'executive') return null;
+    const locations = d['location'] ? [String(d['location'])] : [];
+    if (!validLocationScope(locations)) return null;
+    if (d['line_code']) {
+      const line = await this.pool.query('SELECT location FROM lines WHERE line_code = $1', [d['line_code']]);
+      if (line.rows[0]?.['location'] !== locations[0]) return null;
+    }
+    if (screen !== 'line' && locations[0] !== 'internal') return null;
     return {
       kind: 'device',
       id: Number(d['id']),
       name: String(d['name']),
       roleCode: 'kiosk',
       permissions: DEVICE_PERMISSIONS,
-      locations: d['location'] ? [String(d['location'])] : [],
+      locations,
       screen,
       menus: [screen],
       line: d['line_code'] ? String(d['line_code']) : null,

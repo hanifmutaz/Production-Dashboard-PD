@@ -101,7 +101,7 @@ export async function createHarness(opts: { now?: number; subcontEnabled?: boole
         conmasDb.public.none(literal);
       }
     },
-    async createUser(username, role, password = 'password-rahasia-1', locations = []) {
+    async createUser(username, role, password = 'password-rahasia-1', locations = ['internal', 'sgp', 'systech']) {
       const hash = await AuthService.hashPassword(password);
       const r = dashboardDb.public.one(
         `INSERT INTO users (username, email, display_name, password_hash, role_id) SELECT '${username}', '${username}@example.test', '${username}', '${hash}', id FROM roles WHERE code = '${role}' RETURNING id`,

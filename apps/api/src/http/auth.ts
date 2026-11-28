@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { hasAllLocations } from '@v3/shared';
 import { forbidden, unauthorized } from './errors.js';
 import type { Permission, Principal } from './types.js';
 import type { AuthService } from '../modules/auth/authService.js';
@@ -18,7 +19,7 @@ export function authenticate(auth: AuthService): RequestHandler {
         const p = await auth.resolveDevice(header.slice('Device '.length).trim());
         if (p) {
           if (p.screen === 'hub' || p.screen === 'executive') {
-            const common = req.path === '/auth/me' || req.path === '/settings/runtime';
+            const common = ['/auth/me', '/settings/runtime', '/sites'].includes(req.path);
             const view =
               p.screen === 'executive'
                 ? req.path === '/executive/month'
@@ -27,6 +28,14 @@ export function authenticate(auth: AuthService): RequestHandler {
                   req.query['line'] === undefined;
             if (req.baseUrl !== '/api/v3' || req.method !== 'GET' || !(common || view))
               throw forbidden('Akses terbatas pada layar TV terdaftar');
+          }
+          if (p.screen === 'line' && p.line) {
+            const common = ['/auth/me', '/settings/runtime', '/sites'].includes(req.path);
+            const lineView =
+              ['/reporting/line-detail', '/reporting/line-metrics', '/reporting/reject'].includes(req.path) &&
+              String(req.query['line'] ?? '').toUpperCase() === p.line.toUpperCase();
+            if (req.baseUrl !== '/api/v3' || req.method !== 'GET' || !(common || lineView))
+              throw forbidden('Akses terbatas pada line terdaftar');
           }
           req.principal = p;
         }
@@ -60,10 +69,18 @@ export function requirePermission(permission: Permission, ...alternatives: Permi
   };
 }
 
-/** Cakupan lokasi: kosong = semua lokasi. */
+/** Cakupan lokasi: kosong selalu ditolak. */
 export function canSeeLocation(locations: readonly string[], location: string): boolean {
-  return locations.length === 0 || locations.includes(location);
+  return locations.includes(location);
 }
+
+/** Operasi global tidak dapat didelegasikan kepada akun lokasi tunggal. */
+export const requireCentralScope: RequestHandler = (req, _res, next) => {
+  const p = req.principal;
+  if (!p) return next(unauthorized());
+  if (p.kind !== 'user' || !hasAllLocations(p.locations)) return next(forbidden());
+  next();
+};
 
 /** Ambil principal yang sudah dijamin requireAuth; tanpa non-null assertion. */
 export function principalOf(req: { principal?: Principal | undefined }): Principal {
